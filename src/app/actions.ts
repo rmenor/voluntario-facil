@@ -398,5 +398,3 @@ export async function sendMessage(prevState: any, formData: FormData) {
         return { success: false, error: message };
     }
 }
-
-    

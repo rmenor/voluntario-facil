@@ -340,15 +340,23 @@ export const updateShift = async (shiftId: string, volunteerId: string | null) =
 };
 
 export const rejectShift = async (shiftId: string, volunteerId: string, reason: string | null) => {
-    const shift = shifts.find(s => s.id === shiftId);
-    if (!shift || !volunteerId) {
-        throw new Error('Cannot reject a shift without a volunteer.');
+    const shiftIndex = shifts.findIndex(s => s.id === shiftId);
+    if (shiftIndex === -1) {
+      throw new Error('Shift not found.');
     }
-    
+  
+    const shift = shifts[shiftIndex];
+    if (!shift.volunteerId || shift.volunteerId !== volunteerId) {
+      throw new Error('Shift is not assigned to this volunteer.');
+    }
+  
     shift.volunteerId = null;
     shift.rejectionReason = reason || 'Sin motivo';
     shift.rejectedBy = volunteerId;
+  
     writeData(shiftsPath, shifts);
-}
+  
+    return shift;
+  };
 
     

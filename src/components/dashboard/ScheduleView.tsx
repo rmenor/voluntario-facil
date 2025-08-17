@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { rejectShift } from '@/app/actions';
+import { rejectShift as rejectShiftAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
 import { getPopulatedShifts } from '@/lib/data';
@@ -31,18 +31,19 @@ function RejectSubmitButton() {
   );
 }
 
-function RejectShiftForm({ shift, user, closeDialog }: { shift: PopulatedShift; user: User, closeDialog: () => void }) {
-  const [state, formAction] = useActionState(rejectShift, { success: false, error: null, message: null });
+function RejectShiftForm({ shift, user, closeDialog, onShiftRejected }: { shift: PopulatedShift; user: User, closeDialog: () => void, onShiftRejected: (rejectedShift: PopulatedShift) => void }) {
+  const [state, formAction] = useActionState(rejectShiftAction, { success: false, error: null, message: null });
   const { toast } = useToast();
 
   useEffect(() => {
     if(state.success) {
       toast({ title: "Éxito", description: state.message });
+      onShiftRejected(shift);
       closeDialog();
     } else if (state.error) {
       toast({ variant: 'destructive', title: 'Error', description: state.error });
     }
-  }, [state, toast, closeDialog]);
+  }, [state, toast, closeDialog, shift, onShiftRejected]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -73,12 +74,19 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
     }
   }, [isLoading, isAuthenticated, router]);
   
-  // This effect will refetch the shifts when a shift is rejected or the user changes.
   useEffect(() => {
-    if (user) {
-        getPopulatedShifts().then(setShifts);
-    }
-  }, [rejectingShift, user]);
+    setShifts(initialShifts);
+  }, [initialShifts]);
+
+  const handleShiftRejected = (rejectedShift: PopulatedShift) => {
+    setShifts(currentShifts =>
+        currentShifts.map(s =>
+            s.id === rejectedShift.id
+                ? { ...s, volunteerId: null, volunteer: null, rejectionReason: 'Rechazado por usuario', rejectedBy: user?.id }
+                : s
+        )
+    );
+  };
 
   const myShifts = useMemo(() => {
     if (!user) return [];
@@ -96,11 +104,11 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
   }
 
   const getStatusContent = (shift: PopulatedShift) => {
-    if (shift.rejectionReason) {
+    if (shift.rejectedBy === user.id || (shift.rejectionReason && shift.volunteerId === null)) {
         return (
             <div className="flex flex-col gap-1">
                 <Badge variant="destructive" className="w-fit"><XCircle className="mr-1 h-3 w-3" />Rechazado</Badge>
-                {shift.rejectionReason !== 'Sin motivo' && (
+                {shift.rejectionReason && shift.rejectionReason !== 'Sin motivo' && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Info className="h-3 w-3" />
                     <span className="italic">"{shift.rejectionReason}"</span>
@@ -150,7 +158,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                         {myShifts.map(shift => {
                                             const Icon = LucideIcons[shift.position.iconName as keyof typeof LucideIcons] as React.ElementType;
                                             return (
-                                            <TableRow key={shift.id} className={shift.rejectionReason ? 'bg-destructive/10' : ''}>
+                                            <TableRow key={shift.id} className={shift.rejectedBy === user.id ? 'bg-destructive/10' : ''}>
                                                 <TableCell className="font-medium">{shift.assembly.title}</TableCell>
                                                 <TableCell>{format(new Date(shift.startTime), 'eeee, dd/MM', {locale: es})}</TableCell>
                                                 <TableCell>
@@ -162,7 +170,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                                 <TableCell>{format(new Date(shift.startTime), 'HH:mm')} - {format(new Date(shift.endTime), 'HH:mm')}</TableCell>
                                                 <TableCell>{getStatusContent(shift)}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {!shift.rejectionReason && shift.volunteerId === user.id && (
+                                                    {shift.volunteerId === user.id && (
                                                         <Button variant="outline" size="sm" onClick={() => setRejectingShift(shift)}>
                                                             <XCircle className="mr-2 h-4 w-4" /> Rechazar
                                                         </Button>
@@ -195,11 +203,9 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                     ¿Estás seguro de que quieres rechazar este turno? El administrador será notificado.
                 </DialogDescription>
             </DialogHeader>
-            {rejectingShift && <RejectShiftForm shift={rejectingShift} user={user} closeDialog={() => setRejectingShift(null)} />}
+            {rejectingShift && <RejectShiftForm shift={rejectingShift} user={user} closeDialog={() => setRejectingShift(null)} onShiftRejected={handleShiftRejected} />}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
-    
