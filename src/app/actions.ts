@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getUserByEmail, addUser as dbAddVolunteer, addPosition as dbAddPosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift } from '@/lib/data';
+import { getUserByEmail, addUser as dbAddVolunteer, updateUser as dbUpdateVolunteer, addPosition as dbAddPosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift, getUser } from '@/lib/data';
 import { revalidatePath } from 'next/cache';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -61,6 +61,66 @@ export async function addVolunteer(prevState: any, formData: FormData) {
         return { success: true, message: 'Voluntario añadido correctamente.' };
     } catch (e) {
         return { success: false, error: 'No se pudo añadir el voluntario' };
+    }
+}
+
+const updateVolunteerSchema = volunteerSchema.extend({
+    userId: z.string().min(1, 'ID de usuario no válido'),
+});
+
+export async function updateVolunteer(prevState: any, formData: FormData) {
+    const validatedFields = updateVolunteerSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { success: false, error: 'Datos no válidos' };
+    }
+    
+    const { userId, ...dataToUpdate } = validatedFields.data;
+
+    try {
+        await dbUpdateVolunteer(userId, dataToUpdate);
+        revalidatePath('/admin');
+        revalidatePath('/dashboard');
+        return { success: true, message: 'Voluntario actualizado correctamente.' };
+    } catch (e) {
+        return { success: false, error: 'No se pudo actualizar el voluntario' };
+    }
+}
+
+const updateProfileSchema = z.object({
+    userId: z.string().min(1, 'ID de usuario no válido'),
+    name: z.string().min(2, 'El nombre es obligatorio'),
+    email: z.string().email('Email no válido'),
+    phone: z.string().min(1, 'El teléfono es obligatorio'),
+});
+
+export async function updateProfile(prevState: any, formData: FormData) {
+    const validatedFields = updateProfileSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { success: false, error: 'Datos no válidos' };
+    }
+
+    const { userId, ...dataToUpdate } = validatedFields.data;
+
+    try {
+        await dbUpdateVolunteer(userId, dataToUpdate);
+        revalidatePath('/dashboard');
+        const updatedUser = await getUser(userId);
+        
+        if (!updatedUser) {
+            return { success: false, error: 'No se pudo encontrar al usuario actualizado.' };
+        }
+        
+        const { passwordHash, ...userWithoutPassword } = updatedUser;
+
+        return { 
+            success: true, 
+            message: 'Perfil actualizado correctamente.',
+            user: userWithoutPassword
+        };
+    } catch(e) {
+        return { success: false, error: 'No se pudo actualizar el perfil.' };
     }
 }
 
@@ -252,4 +312,3 @@ export async function rejectShift(prevState: any, formData: FormData) {
         return { success: false, error: message };
     }
 }
- 

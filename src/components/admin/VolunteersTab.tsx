@@ -4,7 +4,7 @@ import { useFormStatus } from 'react-dom';
 import { useEffect, useState, useRef } from 'react';
 
 import type { User } from '@/lib/types';
-import { addVolunteer } from '@/app/actions';
+import { addVolunteer, updateVolunteer } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,18 +13,77 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { PlusCircle, Mail, Phone, User as UserIcon, Edit } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 
-function SubmitButton() {
+function AddSubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
       {pending ? 'Añadiendo...' : 'Añadir Voluntario'}
     </Button>
   );
+}
+
+function EditSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? 'Guardando...' : 'Guardar Cambios'}
+    </Button>
+  );
+}
+
+function EditVolunteerForm({ user, closeDialog }: { user: User, closeDialog: () => void}) {
+    const [state, formAction] = useActionState(updateVolunteer, { success: false, error: null, message: null });
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if(state.success) {
+            toast({ title: "Éxito", description: state.message });
+            closeDialog();
+        } else if (state.error) {
+            toast({ variant: 'destructive', title: 'Error', description: state.error });
+        }
+    }, [state, toast, closeDialog]);
+
+    return (
+        <form action={formAction} className="space-y-4">
+            <input type="hidden" name="userId" value={user.id} />
+            <div className="space-y-2">
+                <Label htmlFor="name">Nombre completo</Label>
+                <Input id="name" name="name" required defaultValue={user.name}/>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" required defaultValue={user.email} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input id="phone" name="phone" required defaultValue={user.phone} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="role">Rol</Label>
+                <Select name="role" defaultValue={user.role}>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="volunteer">Voluntario</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button variant="ghost">Cancelar</Button></DialogClose>
+                <EditSubmitButton />
+            </DialogFooter>
+        </form>
+    )
 }
 
 const getInitials = (name: string) => {
@@ -36,21 +95,22 @@ const getInitials = (name: string) => {
 };
 
 export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }) {
-  const [state, formAction] = useActionState(addVolunteer, { success: false, error: null, message: null });
+  const [addState, addFormAction] = useActionState(addVolunteer, { success: false, error: null, message: null });
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isCreateOpen, setCreateOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const createFormRef = useRef<HTMLFormElement>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (state.success) {
-      toast({ title: 'Éxito', description: state.message });
-      setOpen(false);
-      formRef.current?.reset();
-    } else if (state.error) {
-      toast({ variant: 'destructive', title: 'Error', description: state.error });
+    if (addState.success) {
+      toast({ title: 'Éxito', description: addState.message });
+      setCreateOpen(false);
+      createFormRef.current?.reset();
+    } else if (addState.error) {
+      toast({ variant: 'destructive', title: 'Error', description: addState.error });
     }
-  }, [state, toast]);
+  }, [addState, toast]);
 
   const renderMobileView = () => (
     <div className="space-y-4">
@@ -68,6 +128,9 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
                   <CardDescription className="capitalize">{user.role}</CardDescription>
                 </div>
               </div>
+               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditingUser(user)}>
+                    <Edit className="h-4 w-4" />
+                </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -93,6 +156,7 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
           <TableHead>Email</TableHead>
           <TableHead>Teléfono</TableHead>
           <TableHead>Rol</TableHead>
+          <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -110,6 +174,11 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.phone}</TableCell>
             <TableCell className="capitalize">{user.role}</TableCell>
+            <TableCell className="text-right">
+                <Button variant="ghost" size="sm" onClick={() => setEditingUser(user)}>
+                    <Edit className="h-4 w-4" />
+                </Button>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -124,7 +193,7 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
           <CardTitle>Gestionar Voluntarios</CardTitle>
           <CardDescription>Añadir y ver información de los voluntarios.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button><PlusCircle className="mr-2 h-4 w-4" />Añadir Voluntario</Button>
           </DialogTrigger>
@@ -132,7 +201,7 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
             <DialogHeader>
               <DialogTitle>Nuevo Voluntario</DialogTitle>
             </DialogHeader>
-            <form action={formAction} ref={formRef} className="space-y-4">
+            <form action={addFormAction} ref={createFormRef} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre completo</Label>
                 <Input id="name" name="name" required />
@@ -159,7 +228,7 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
               </div>
               <DialogFooter>
                 <DialogClose asChild><Button variant="ghost">Cancelar</Button></DialogClose>
-                <SubmitButton />
+                <AddSubmitButton />
               </DialogFooter>
             </form>
           </DialogContent>
@@ -168,6 +237,15 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
       <CardContent>
         {isMobile ? renderMobileView() : renderDesktopView()}
       </CardContent>
+
+      <Dialog open={!!editingUser} onOpenChange={(isOpen) => !isOpen && setEditingUser(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Editar Voluntario</DialogTitle>
+            </DialogHeader>
+            {editingUser && <EditVolunteerForm user={editingUser} closeDialog={() => setEditingUser(null)} />}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

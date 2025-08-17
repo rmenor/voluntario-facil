@@ -111,6 +111,14 @@ export const addUser = async (userData: Omit<User, 'id' | 'passwordHash'> & { pa
     return newUser;
 };
 
+export const updateUser = async (userId: string, userData: Partial<Omit<User, 'id' | 'passwordHash'>>) => {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if(userIndex > -1) {
+        users[userIndex] = { ...users[userIndex], ...userData };
+    }
+    return users[userIndex];
+}
+
 export const addPosition = async (positionData: Omit<Position, 'id'>) => {
     const newPosition: Position = { id: generateId(), ...positionData };
     positions.push(newPosition);

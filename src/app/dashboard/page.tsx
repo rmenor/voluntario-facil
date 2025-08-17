@@ -1,4 +1,4 @@
-import { getPopulatedShifts, getPopulatedAssemblies } from '@/lib/data';
+import { getPopulatedShifts, getPopulatedAssemblies, getUsers } from '@/lib/data';
 import ScheduleView from '@/components/dashboard/ScheduleView';
 
 export default async function DashboardPage() {

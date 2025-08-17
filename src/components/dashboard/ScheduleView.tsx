@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { rejectShift } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
+import ProfileCard from './ProfileCard';
 
 
 function RejectSubmitButton() {
@@ -74,7 +75,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
     if (!user) return [];
     return initialShifts
         .filter(shift => shift.volunteer?.id === user?.id || shift.rejectedBy === user.id)
-        .sort((a,b) => a.startTime.getTime() - b.startTime.getTime());
+        .sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   }, [initialShifts, user]);
 
   if (isLoading || !isAuthenticated || !user) {
@@ -96,16 +97,17 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
 };
 
   return (
-    <Dialog open={!!rejectingShift} onOpenChange={(isOpen) => !isOpen && setRejectingShift(null)}>
-        <div className="flex flex-col min-h-screen">
-          <AppHeader />
-          <main className="flex-1 p-4 sm:p-6 md:p-8">
-            <div className="max-w-7xl mx-auto">
-               <div className="mb-6">
-                <h1 className="text-3xl font-bold font-headline">Hola, {user.name.split(' ')[0]}</h1>
-                <p className="text-muted-foreground capitalize">Bienvenido a tu panel de voluntario.</p>
-              </div>
-              
+    <div className="flex flex-col min-h-screen">
+      <AppHeader />
+      <main className="flex-1 p-4 sm:p-6 md:p-8">
+        <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+            <h1 className="text-3xl font-bold font-headline">Hola, {user.name.split(' ')[0]}</h1>
+            <p className="text-muted-foreground capitalize">Bienvenido a tu panel de voluntario.</p>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-3">
+            <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
                         <CardTitle>Mis Próximos Turnos</CardTitle>
@@ -131,22 +133,20 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                             return (
                                             <TableRow key={shift.id} className={shift.rejectionReason ? 'bg-destructive/10' : ''}>
                                                 <TableCell>{shift.assembly.title}</TableCell>
-                                                <TableCell>{format(shift.startTime, 'eeee, dd/MM', {locale: es})}</TableCell>
+                                                <TableCell>{format(new Date(shift.startTime), 'eeee, dd/MM', {locale: es})}</TableCell>
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center gap-3">
                                                         {Icon && <Icon className="h-5 w-5 text-primary" />}
                                                         {shift.position.name}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>{format(shift.startTime, 'HH:mm')} - {format(shift.endTime, 'HH:mm')}</TableCell>
+                                                <TableCell>{format(new Date(shift.startTime), 'HH:mm')} - {format(new Date(shift.endTime), 'HH:mm')}</TableCell>
                                                 <TableCell>{getStatusBadge(shift)}</TableCell>
                                                 <TableCell className="text-right">
                                                     {!shift.rejectionReason && shift.volunteerId === user.id && (
-                                                        <DialogTrigger asChild>
-                                                            <Button variant="outline" size="sm" onClick={() => setRejectingShift(shift)}>
-                                                                <XCircle className="mr-2 h-4 w-4" /> Rechazar
-                                                            </Button>
-                                                        </DialogTrigger>
+                                                        <Button variant="outline" size="sm" onClick={() => setRejectingShift(shift)}>
+                                                            <XCircle className="mr-2 h-4 w-4" /> Rechazar
+                                                        </Button>
                                                     )}
                                                 </TableCell>
                                             </TableRow>
@@ -155,7 +155,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                 </Table>
                             </div>
                         ) : (
-                             <div className="text-center py-16 px-4">
+                            <div className="text-center py-16 px-4">
                                 <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                                 <h2 className="text-xl font-semibold">No tienes turnos asignados</h2>
                                 <p className="text-muted-foreground mt-2">Pronto se publicarán nuevos turnos. ¡Mantente atento!</p>
@@ -164,8 +164,14 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                     </CardContent>
                 </Card>
             </div>
-          </main>
+            <div className="md:col-span-1">
+                <ProfileCard user={user} />
+            </div>
+            </div>
         </div>
+      </main>
+      
+      <Dialog open={!!rejectingShift} onOpenChange={(isOpen) => !isOpen && setRejectingShift(null)}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Rechazar Turno</DialogTitle>
@@ -175,6 +181,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
             </DialogHeader>
             {rejectingShift && <RejectShiftForm shift={rejectingShift} user={user} closeDialog={() => setRejectingShift(null)} />}
         </DialogContent>
-    </Dialog>
+      </Dialog>
+    </div>
   );
 }

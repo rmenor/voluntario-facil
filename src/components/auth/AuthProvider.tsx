@@ -6,7 +6,7 @@ import { createContext, useState, useEffect, useCallback, type ReactNode } from 
 
 export interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void;
+  login: (userData: User, isUpdate?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -33,9 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback((userData: User) => {
+  const login = useCallback((userData: User, isUpdate = false) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    
+    if (isUpdate) {
+      return;
+    }
+
     if (userData.role === 'admin') {
       router.push('/admin');
     } else {

@@ -4,6 +4,7 @@ import { useFormStatus } from 'react-dom';
 import * as LucideIcons from 'lucide-react';
 import { format, formatISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 import type { PopulatedShift, Position, User, PopulatedAssembly } from '@/lib/types';
 import { addShift, assignVolunteerToShift } from '@/app/actions';
@@ -15,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Clock, User as UserIcon, AlertCircle, CheckCircle, HelpCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Trash2, Clock, User as UserIcon, AlertCircle, CheckCircle, HelpCircle, XCircle, AlertTriangle, Printer } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -79,6 +80,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
   const [selectedAssembly, setSelectedAssembly] = useState<string>('all');
   const [selectedAssemblyForCreation, setSelectedAssemblyForCreation] = useState<string | null>(assemblies[0]?.id || null);
   const isMobile = useIsMobile();
+  const router = useRouter();
 
   useEffect(() => {
     if (state.success) {
@@ -100,6 +102,11 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
       }
     });
   };
+
+  const handlePrint = () => {
+    const url = `/admin/print?assemblyId=${selectedAssembly}`;
+    window.open(url, '_blank');
+  }
 
   const filteredShifts = useMemo(() => {
     if (selectedAssembly === 'all') return initialShifts;
@@ -268,6 +275,9 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
               {assemblies.map(a => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" /> Imprimir
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button disabled={!selectedAssemblyForCreation}><PlusCircle className="mr-2 h-4 w-4" />Crear Turno</Button>
