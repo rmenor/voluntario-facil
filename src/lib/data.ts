@@ -46,317 +46,276 @@ const writeData = <T>(filePath: string, data: T) => {
 let users: User[] = readData(usersPath, initialUsers);
 let positions: Position[] = readData(positionsPath, initialPositions);
 let assemblies: Assembly[] = readData(assembliesPath, initialAssemblies.map(a => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { volunteers, ...rest } = a;
     return rest;
 }));
 let shifts: Shift[] = readData(shiftsPath, initialShifts.map(s => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { position, volunteer, assembly, ...rest } = s;
     return rest;
 }));
 let conversations: Conversation[] = readData(conversationsPath, initialConversations);
 let messages: ChatMessage[] = readData(messagesPath, initialMessages);
 
-const parseDatesInObject = <T extends { startTime?: any, endTime?: any, startDate?: any, endDate?: any, timestamp?: any }>(item: T): T => {
-    const newItem = { ...item };
-    if (item.startTime && typeof item.startTime === 'string') newItem.startTime = new Date(item.startTime);
-    if (item.endTime && typeof item.endTime === 'string') newItem.endTime = new Date(item.endTime);
-    if (item.startDate && typeof item.startDate === 'string') newItem.startDate = new Date(item.startDate);
-    if (item.endDate && typeof item.endDate === 'string') newItem.endDate = new Date(item.endDate);
-    if (item.timestamp && typeof item.timestamp === 'string') newItem.timestamp = new Date(item.timestamp);
-    return newItem;
-};
 
-const parseDatesInArray = <T extends { startTime?: any, endTime?: any, startDate?: any, endDate?: any, timestamp?: any }>(items: T[]): T[] => {
-    return items.map(parseDatesInObject);
-};
-
-// Parse dates after reading from JSON
-shifts = parseDatesInArray(shifts);
-assemblies = parseDatesInArray(assemblies);
-messages = parseDatesInArray(messages);
-
-// Helper to generate IDs
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-// --- API Functions ---
-
-// Users
-export const getUsers = async (): Promise<User[]> => {
-    return JSON.parse(JSON.stringify(users));
-};
-
-export const getUser = async (id: string): Promise<User | null> => {
-    const user = users.find(u => u.id === id);
-    return user ? JSON.parse(JSON.stringify(user)) : null;
+// --- Data Access Functions ---
+function generateId() {
+    return Math.random().toString(36).substring(2, 11);
 }
 
-export const getUserByEmail = async (email: string): Promise<User | undefined> => {
-    const user = users.find(u => u.email === email);
-    return user ? JSON.parse(JSON.stringify(user)) : undefined;
+// USERS
+export async function getUsers(): Promise<User[]> {
+    return users;
 }
 
-// Positions
-export const getPositions = async (assemblyId?: string): Promise<Position[]> => {
-    const allPositions = JSON.parse(JSON.stringify(positions));
-    if (assemblyId) {
-        return allPositions.filter((p: Position) => p.assemblyId === assemblyId);
-    }
-    return allPositions;
-};
-
-
-// Assemblies
-export const getPopulatedAssemblies = async (): Promise<PopulatedAssembly[]> => {
-    const populatedAssemblies = assemblies.map(assembly => {
-        const assemblyVolunteers = users.filter(user => assembly.volunteerIds.includes(user.id));
-        return {
-            ...assembly,
-            volunteers: assemblyVolunteers
-        };
-    });
-    const stringified = JSON.stringify(populatedAssemblies);
-    return parseDatesInArray(JSON.parse(stringified));
+export async function getUser(id: string): Promise<User | null> {
+    return users.find(u => u.id === id) || null;
 }
 
-export const getAssemblies = async (): Promise<Assembly[]> => {
-    const sorted = assemblies.sort((a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-    const stringified = JSON.stringify(sorted);
-    return parseDatesInArray(JSON.parse(stringified));
+export async function getUserByEmail(email: string): Promise<User | null> {
+    return users.find(u => u.email === email) || null;
 }
 
-// Shifts
-export const getPopulatedShifts = async (assemblyId?: string): Promise<PopulatedShift[]> => {
-    const relevantShifts = assemblyId ? shifts.filter(s => s.assemblyId === assemblyId) : shifts;
-
-    const populated = relevantShifts.map(shift => {
-        const position = positions.find(p => p.id === shift.positionId);
-        const assembly = assemblies.find(a => a.id === shift.assemblyId);
-        if (!position || !assembly) return null;
-
-        return {
-            ...shift,
-            position,
-            volunteer: shift.volunteerId ? users.find(u => u.id === shift.volunteerId) || null : null,
-            assembly,
-        };
-    }).filter((s): s is PopulatedShift => s !== null);
-    
-    const sorted = populated.sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-    
-    const stringified = JSON.stringify(sorted);
-    return parseDatesInArray(JSON.parse(stringified));
-};
-
-// --- CHAT ---
-export const getConversationsForUser = async (userId: string): Promise<Conversation[]> => {
-    const userConversations = conversations.filter(c => c.participantIds.includes(userId));
-    const populated = userConversations.map(c => {
-        const lastMessage = messages
-            .filter(m => m.conversationId === c.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-        return { ...c, lastMessage: lastMessage || null };
-    });
-    const sorted = populated.sort((a, b) => {
-        if (!a.lastMessage) return 1;
-        if (!b.lastMessage) return -1;
-        return new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime();
-    });
-    const stringified = JSON.stringify(sorted);
-    return parseDatesInArray(JSON.parse(stringified));
-};
-
-export const getPopulatedConversation = async (conversationId: string, userId: string): Promise<PopulatedConversation | null> => {
-    const conversation = conversations.find(c => c.id === conversationId);
-
-    if (!conversation || !conversation.participantIds.includes(userId)) {
-        return null;
-    }
-
-    const conversationMessages = messages
-        .filter(m => m.conversationId === conversationId)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    const participants = users.filter(u => conversation.participantIds.includes(u.id));
-
-    const populated: PopulatedConversation = {
-        ...conversation,
-        messages: conversationMessages,
-        participants,
-    };
-    
-    const stringified = JSON.stringify(populated);
-    return parseDatesInObject(JSON.parse(stringified));
-};
-
-export const addMessageToConversation = async (conversationId: string, senderId: string, text: string): Promise<ChatMessage> => {
-    const conversation = conversations.find(c => c.id === conversationId);
-    if (!conversation || !conversation.participantIds.includes(senderId)) {
-        throw new Error("User not in conversation");
-    }
-
-    const newMessage: ChatMessage = {
-        id: generateId(),
-        conversationId,
-        senderId,
-        text,
-        timestamp: new Date(),
-    };
-    messages.push(newMessage);
-    writeData(messagesPath, messages);
-    return parseDatesInObject(JSON.parse(JSON.stringify(newMessage)));
-};
-
-
-// --- CRUD Operations (for Server Actions) ---
-export const addUser = async (userData: Omit<User, 'id' | 'passwordHash'> & { password?: string }) => {
-    const newUser: User = {
-        id: generateId(),
-        ...userData,
-        passwordHash: userData.password || 'password'
-    };
+export async function addUser(user: Omit<User, 'id'>): Promise<User> {
+    const newUser = { ...user, id: generateId() };
     users.push(newUser);
     writeData(usersPath, users);
     return newUser;
-};
+}
 
-export const updateUser = async (userId: string, userData: Partial<Omit<User, 'id' | 'passwordHash'>>) => {
-    const userIndex = users.findIndex(u => u.id === userId);
-    if(userIndex > -1) {
-        users[userIndex] = { ...users[userIndex], ...userData };
-        writeData(usersPath, users);
-    }
+export async function updateUser(id: string, data: Partial<Omit<User, 'id'>>): Promise<User> {
+    const userIndex = users.findIndex(u => u.id === id);
+    if (userIndex === -1) throw new Error('User not found');
+    users[userIndex] = { ...users[userIndex], ...data };
+    writeData(usersPath, users);
     return users[userIndex];
 }
 
-export const deleteUser = async (userId: string) => {
-    const userIndex = users.findIndex(u => u.id === userId);
-    if(userIndex === -1) {
-        throw new Error("User not found");
-    }
-    
+export async function deleteUser(id: string): Promise<void> {
+    const userIndex = users.findIndex(u => u.id === id);
+    if (userIndex === -1) throw new Error('User not found');
+
+    // Remove from users
     users.splice(userIndex, 1);
-
-    shifts.forEach(shift => {
-        if(shift.volunteerId === userId) {
-            shift.volunteerId = null;
-        }
-    });
-
-    assemblies.forEach(assembly => {
-        const volunteerIndex = assembly.volunteerIds.indexOf(userId);
-        if(volunteerIndex > -1) {
-            assembly.volunteerIds.splice(volunteerIndex, 1);
-        }
-    });
-    
-    conversations.forEach(conversation => {
-        const participantIndex = conversation.participantIds.indexOf(userId);
-        if(participantIndex > -1) {
-            conversation.participantIds.splice(participantIndex, 1);
-        }
-    });
-    
     writeData(usersPath, users);
+
+    // Unassign from shifts
+    shifts = shifts.map(s => s.volunteerId === id ? { ...s, volunteerId: null } : s);
     writeData(shiftsPath, shifts);
+
+    // Remove from assemblies
+    assemblies = assemblies.map(a => ({
+        ...a,
+        volunteerIds: a.volunteerIds.filter(vId => vId !== id)
+    }));
     writeData(assembliesPath, assemblies);
+
+    // Remove from conversations
+    conversations = conversations.map(c => ({
+        ...c,
+        participantIds: c.participantIds.filter(pId => pId !== id)
+    }));
     writeData(conversationsPath, conversations);
 }
 
-export const addPosition = async (positionData: Omit<Position, 'id'>) => {
-    const newPosition: Position = { id: generateId(), ...positionData };
+
+// POSITIONS
+export async function getPositions(assemblyId?: string): Promise<Position[]> {
+    if (assemblyId) {
+        return positions.filter(p => p.assemblyId === assemblyId);
+    }
+    return positions;
+}
+
+export async function addPosition(position: Omit<Position, 'id'>): Promise<Position> {
+    const newPosition = { ...position, id: generateId() };
     positions.push(newPosition);
     writeData(positionsPath, positions);
     return newPosition;
-};
+}
 
-export const updatePosition = async (positionId: string, positionData: Partial<Omit<Position, 'id'>>) => {
-    const index = positions.findIndex(p => p.id === positionId);
-    if (index !== -1) {
-        positions[index] = { ...positions[index], ...positionData };
-        writeData(positionsPath, positions);
-    }
-};
-
-export const deletePosition = async (positionId: string) => {
-    const index = positions.findIndex(p => p.id === positionId);
-    if (index === -1) {
-        throw new Error("Position not found");
-    }
-    positions.splice(index, 1);
-
-    shifts.forEach(shift => {
-        if (shift.positionId === positionId) {
-            shift.volunteerId = null; 
-            shift.rejectionReason = 'Posición eliminada';
-        }
-    });
-
+export async function updatePosition(id: string, data: Partial<Omit<Position, 'id' | 'assemblyId'>>): Promise<Position> {
+    const positionIndex = positions.findIndex(p => p.id === id);
+    if (positionIndex === -1) throw new Error('Position not found');
+    positions[positionIndex] = { ...positions[positionIndex], ...data };
     writeData(positionsPath, positions);
-    writeData(shiftsPath, shifts);
-};
+    return positions[positionIndex];
+}
 
-export const addAssembly = async (assemblyData: Omit<Assembly, 'id' | 'volunteerIds'>) => {
+export async function deletePosition(id: string): Promise<void> {
+    const positionIndex = positions.findIndex(p => p.id === id);
+    if (positionIndex === -1) throw new Error('Position not found');
+    
+    // Unassign this position from all shifts
+    shifts = shifts.map(s => s.positionId === id ? { ...s, positionId: 'unassigned' } : s); // Or handle differently
+    writeData(shiftsPath, shifts);
+
+    positions.splice(positionIndex, 1);
+    writeData(positionsPath, positions);
+}
+
+
+// ASSEMBLIES
+export async function getAssemblies(): Promise<Assembly[]> {
+    return assemblies;
+}
+
+export async function getPopulatedAssemblies(): Promise<PopulatedAssembly[]> {
+    return assemblies.map(assembly => ({
+        ...assembly,
+        startDate: new Date(assembly.startDate),
+        endDate: new Date(assembly.endDate),
+        volunteers: users.filter(user => assembly.volunteerIds.includes(user.id))
+    }));
+}
+
+export async function addAssembly(assemblyData: Omit<Assembly, 'id' | 'volunteerIds'>): Promise<Assembly> {
     const newAssembly: Assembly = {
-        id: generateId(),
         ...assemblyData,
+        id: generateId(),
         volunteerIds: [],
     };
     assemblies.push(newAssembly);
     writeData(assembliesPath, assemblies);
     return newAssembly;
-};
+}
 
-export const updateAssembly = async (assemblyId: string, assemblyData: Partial<Omit<Assembly, 'id'>>) => {
-    const index = assemblies.findIndex(a => a.id === assemblyId);
-    if (index !== -1) {
-        assemblies[index] = { ...assemblies[index], ...assemblyData };
-        writeData(assembliesPath, assemblies);
-    }
-};
+export async function updateAssembly(id: string, data: Partial<Omit<Assembly, 'id'>>): Promise<Assembly> {
+    const assemblyIndex = assemblies.findIndex(a => a.id === id);
+    if (assemblyIndex === -1) throw new Error('Assembly not found');
+    
+    assemblies[assemblyIndex] = { ...assemblies[assemblyIndex], ...data };
+    writeData(assembliesPath, assemblies);
+    return assemblies[assemblyIndex];
+}
 
-export const associateVolunteerToAssembly = async (assemblyId: string, volunteerId: string) => {
+export async function associateVolunteerToAssembly(assemblyId: string, volunteerId: string): Promise<void> {
     const assembly = assemblies.find(a => a.id === assemblyId);
-    if (assembly && !assembly.volunteerIds.includes(volunteerId)) {
+    if (!assembly) throw new Error('Assembly not found');
+    if (!assembly.volunteerIds.includes(volunteerId)) {
         assembly.volunteerIds.push(volunteerId);
         writeData(assembliesPath, assemblies);
     }
 }
 
-export const addShift = async (shiftData: Omit<Shift, 'id' | 'rejectionReason' | 'rejectedBy'>) => {
-    const newShift: Shift = { id: generateId(), ...shiftData };
+
+// SHIFTS
+export async function getPopulatedShifts(assemblyId?: string): Promise<PopulatedShift[]> {
+    const allAssemblies = await getPopulatedAssemblies();
+    const allPositions = await getPositions();
+
+    const targetShifts = assemblyId ? shifts.filter(s => s.assemblyId === assemblyId) : shifts;
+
+    return targetShifts.map(shift => {
+        const position = allPositions.find(p => p.id === shift.positionId);
+        const volunteer = users.find(u => u.id === shift.volunteerId);
+        const assembly = allAssemblies.find(a => a.id === shift.assemblyId);
+
+        if (!position || !assembly) {
+            // This can happen if a position or assembly was deleted.
+            // You might want to handle this more gracefully.
+            return null;
+        }
+
+        return {
+            ...shift,
+            startTime: new Date(shift.startTime),
+            endTime: new Date(shift.endTime),
+            position,
+            volunteer: volunteer || null,
+            assembly,
+        };
+    }).filter((s): s is PopulatedShift => s !== null);
+}
+
+export async function addShift(shiftData: Omit<Shift, 'id'>): Promise<Shift> {
+    const newShift = { ...shiftData, id: generateId() };
     shifts.push(newShift);
     writeData(shiftsPath, shifts);
     return newShift;
-};
+}
 
-export const updateShift = async (shiftId: string, volunteerId: string | null) => {
-    const shift = shifts.find(s => s.id === shiftId);
-    if (shift) {
-        shift.volunteerId = volunteerId;
-        delete shift.rejectionReason;
-        delete shift.rejectedBy;
-        writeData(shiftsPath, shifts);
-    }
-};
-
-export const rejectShift = async (shiftId: string, volunteerId: string, reason: string | null) => {
+export async function updateShift(shiftId: string, volunteerId: string | null): Promise<Shift> {
     const shiftIndex = shifts.findIndex(s => s.id === shiftId);
-    if (shiftIndex === -1) {
-      throw new Error('Shift not found.');
+    if (shiftIndex === -1) throw new Error("Shift not found");
+
+    shifts[shiftIndex].volunteerId = volunteerId;
+    // If we assign a volunteer, clear any previous rejection
+    if (volunteerId) {
+        shifts[shiftIndex].rejectionReason = null;
+        shifts[shiftIndex].rejectedBy = null;
     }
-  
-    const shift = shifts[shiftIndex];
-    if (!shift.volunteerId || shift.volunteerId !== volunteerId) {
-      throw new Error('Shift is not assigned to this volunteer.');
-    }
-  
-    shift.volunteerId = null;
-    shift.rejectionReason = reason || 'Sin motivo';
-    shift.rejectedBy = volunteerId;
-  
     writeData(shiftsPath, shifts);
-  
-    return shift;
-  };
+    return shifts[shiftIndex];
+}
+
+
+export async function rejectShift(shiftId: string, volunteerId: string, reason: string | null): Promise<void> {
+    const shiftIndex = shifts.findIndex(s => s.id === shiftId && s.volunteerId === volunteerId);
+    if (shiftIndex === -1) throw new Error("Turno no encontrado o no te pertenece.");
+
+    const updatedShift: Shift = {
+        ...shifts[shiftIndex],
+        volunteerId: null,
+        rejectionReason: reason || 'Sin motivo',
+        rejectedBy: volunteerId,
+    };
+    
+    shifts[shiftIndex] = updatedShift;
+    writeData(shiftsPath, shifts);
+}
+
+// CHAT
+export async function getConversationsForUser(userId: string): Promise<Conversation[]> {
+    const userConversations = conversations.filter(c => c.participantIds.includes(userId));
+    
+    return userConversations.map(conv => {
+        const lastMessage = [...messages]
+            .filter(m => m.conversationId === conv.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        return {
+            ...conv,
+            lastMessage: lastMessage || null
+        };
+    }).sort((a,b) => {
+        if (!a.lastMessage) return 1;
+        if (!b.lastMessage) return -1;
+        return new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime();
+    });
+}
+
+export async function getPopulatedConversation(conversationId: string, userId: string): Promise<PopulatedConversation | null> {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation || !conversation.participantIds.includes(userId)) return null;
+
+    const participants = users.filter(u => conversation.participantIds.includes(u.id));
+    const conversationMessages = messages
+        .filter(m => m.conversationId === conversationId)
+        .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return {
+        ...conversation,
+        participants,
+        messages: conversationMessages.map(m => ({...m, timestamp: new Date(m.timestamp)}))
+    };
+}
+
+export async function addMessageToConversation(conversationId: string, senderId: string, text: string): Promise<ChatMessage> {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation || !conversation.participantIds.includes(senderId)) {
+        throw new Error("No tienes permiso para enviar mensajes a esta conversación.");
+    }
+    const newMessage: ChatMessage = {
+        id: generateId(),
+        conversationId,
+        senderId,
+        text,
+        timestamp: new Date()
+    };
+    messages.push(newMessage);
+    writeData(messagesPath, messages);
+    return newMessage;
+}
 
     
