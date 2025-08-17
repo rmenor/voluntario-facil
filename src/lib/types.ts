@@ -45,3 +45,23 @@ export interface PopulatedShift extends Omit<Shift, 'positionId' | 'volunteerId'
   volunteer: User | null; // The currently assigned volunteer
   assembly: Assembly;
 }
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text: string;
+  timestamp: Date;
+}
+
+export interface Conversation {
+  id: string;
+  name: string | null;
+  participantIds: string[];
+  lastMessage?: Message;
+}
+
+export interface PopulatedConversation extends Conversation {
+  participants: User[];
+  messages: Message[];
+}
