@@ -1,0 +1,30 @@
+[
+  {
+    "id": "m1",
+    "conversationId": "c1",
+    "senderId": "1",
+    "text": "¡Bienvenidos al equipo de voluntarios! Gracias por vuestro apoyo.",
+    "timestamp": "2025-08-17T16:54:45.627Z"
+  },
+  {
+    "id": "m2",
+    "conversationId": "c1",
+    "senderId": "2",
+    "text": "¡Hola! Encantado de estar aquí y ayudar.",
+    "timestamp": "2025-08-17T17:24:45.627Z"
+  },
+  {
+    "id": "m3",
+    "conversationId": "c2",
+    "senderId": "1",
+    "text": "Recordatorio para el turno de mañana: nos vemos a las 8am en el Sector A.",
+    "timestamp": "2025-08-17T18:24:45.627Z"
+  },
+  {
+    "id": "m4",
+    "conversationId": "c3",
+    "senderId": "2",
+    "text": "Hola, tengo una pregunta sobre mi turno del domingo.",
+    "timestamp": "2025-08-17T18:49:45.627Z"
+  }
+]

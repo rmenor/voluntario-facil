@@ -4,16 +4,26 @@ import { useFormStatus } from 'react-dom';
 import { useEffect, useState, useRef, useMemo } from 'react';
 
 import type { User } from '@/lib/types';
-import { addVolunteer, updateVolunteer } from '@/app/actions';
+import { addVolunteer, updateVolunteer, deleteVolunteer } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Mail, Phone, Search, User as UserIcon, Edit } from 'lucide-react';
+import { PlusCircle, Mail, Phone, Search, User as UserIcon, Edit, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
@@ -36,6 +46,40 @@ function EditSubmitButton() {
       {pending ? 'Guardando...' : 'Guardar Cambios'}
     </Button>
   );
+}
+
+function DeleteSubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <AlertDialogAction type="submit" disabled={pending}>
+            {pending ? 'Eliminando...' : 'Eliminar'}
+        </AlertDialogAction>
+    )
+}
+
+function DeleteVolunteerForm({ userId, closeDialog }: { userId: string, closeDialog: () => void }) {
+    const [state, formAction] = useActionState(deleteVolunteer, { success: false, error: null, message: null });
+    const { toast } = useToast();
+    const formRef = useRef<HTMLFormElement>(null);
+
+    useEffect(() => {
+        if(state.success) {
+            toast({ title: "Éxito", description: state.message });
+            closeDialog();
+        } else if (state.error) {
+            toast({ variant: 'destructive', title: 'Error', description: state.error });
+        }
+    }, [state, toast, closeDialog]);
+    
+    return (
+        <form action={formAction} ref={formRef}>
+            <input type="hidden" name="userId" value={userId} />
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <DeleteSubmitButton />
+            </AlertDialogFooter>
+        </form>
+    )
 }
 
 function EditVolunteerForm({ user, closeDialog }: { user: User, closeDialog: () => void}) {
@@ -94,11 +138,12 @@ const getInitials = (name: string) => {
   return name.substring(0, 2);
 };
 
-export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }) {
+export default function VoluntariosTab({ initialUsers }: { initialUsers: User[] }) {
   const [addState, addFormAction] = useActionState(addVolunteer, { success: false, error: null, message: null });
   const { toast } = useToast();
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const createFormRef = useRef<HTMLFormElement>(null);
   const isMobile = useIsMobile();
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'volunteer'>('all');
@@ -146,9 +191,22 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
                   </CardDescription>
                 </div>
               </div>
-               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditingUser(user)}>
-                    <Edit className="h-4 w-4" />
-                </Button>
+               <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeletingUser(user)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -195,9 +253,22 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
                 <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="capitalize">{user.role}</Badge>
             </TableCell>
             <TableCell className="text-right">
-                <Button variant="ghost" size="sm" onClick={() => setEditingUser(user)}>
-                    <Edit className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeletingUser(user)}>
+                             <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
@@ -211,7 +282,7 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <CardTitle>Gestionar Voluntarios</CardTitle>
-          <CardDescription>Añadir y ver información de los voluntarios.</CardDescription>
+          <CardDescription>Añadir, editar y ver información de todos los voluntarios.</CardDescription>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
@@ -288,6 +359,20 @@ export default function VolunteersTab({ initialUsers }: { initialUsers: User[] }
             {editingUser && <EditVolunteerForm user={editingUser} closeDialog={() => setEditingUser(null)} />}
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={!!deletingUser} onOpenChange={(isOpen) => !isOpen && setDeletingUser(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Se eliminará permanentemente al voluntario
+                    y se desasignará de todos los turnos.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deletingUser && <DeleteVolunteerForm userId={deletingUser.id} closeDialog={() => setDeletingUser(null)} />}
+        </AlertDialogContent>
+      </AlertDialog>
+
     </Card>
   );
 }

@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { rejectShift } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
+import { getPopulatedShifts } from '@/lib/data';
 
 
 function RejectSubmitButton() {
@@ -47,6 +48,7 @@ function RejectShiftForm({ shift, user, closeDialog }: { shift: PopulatedShift; 
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="shiftId" value={shift.id} />
       <input type="hidden" name="volunteerId" value={user.id} />
+      <input type="hidden" name="assemblyId" value={shift.assemblyId} />
       <div className="space-y-2">
         <Label htmlFor="reason">Motivo del rechazo (opcional)</Label>
         <Textarea id="reason" name="reason" placeholder="Ej: Tengo un compromiso previo..." />
@@ -63,19 +65,27 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [rejectingShift, setRejectingShift] = useState<PopulatedShift | null>(null);
+  const [shifts, setShifts] = useState(initialShifts);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/');
     }
   }, [isLoading, isAuthenticated, router]);
+  
+  // This effect will refetch the shifts when a shift is rejected or the user changes.
+  useEffect(() => {
+    if (user) {
+        getPopulatedShifts().then(setShifts);
+    }
+  }, [rejectingShift, user]);
 
   const myShifts = useMemo(() => {
     if (!user) return [];
-    return initialShifts
+    return shifts
         .filter(shift => shift.volunteer?.id === user?.id || shift.rejectedBy === user.id)
         .sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  }, [initialShifts, user]);
+  }, [shifts, user]);
 
   if (isLoading || !isAuthenticated || !user) {
     return (
@@ -191,3 +201,5 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
     </div>
   );
 }
+
+    

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "s1",
+    "positionId": "p1",
+    "volunteerId": "2",
+    "startTime": "2024-10-26T08:00:00.000Z",
+    "endTime": "2024-10-26T12:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s2",
+    "positionId": "p2",
+    "volunteerId": "3",
+    "startTime": "2024-10-26T08:00:00.000Z",
+    "endTime": "2024-10-26T12:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s3",
+    "positionId": "p3",
+    "volunteerId": "4",
+    "startTime": "2024-10-26T09:00:00.000Z",
+    "endTime": "2024-10-26T13:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s4",
+    "positionId": "p4",
+    "volunteerId": null,
+    "startTime": "2024-10-27T10:00:00.000Z",
+    "endTime": "2024-10-27T14:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s5",
+    "positionId": "p5",
+    "volunteerId": null,
+    "startTime": "2024-10-27T12:00:00.000Z",
+    "endTime": "2024-10-27T16:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s6",
+    "positionId": "p6",
+    "volunteerId": "2",
+    "startTime": "2024-10-27T12:00:00.000Z",
+    "endTime": "2024-10-27T16:00:00.000Z",
+    "assemblyId": "a1"
+  },
+  {
+    "id": "s7",
+    "positionId": "p7",
+    "volunteerId": null,
+    "startTime": "2024-08-15T13:00:00.000Z",
+    "endTime": "2024-08-15T17:00:00.000Z",
+    "assemblyId": "a2"
+  },
+  {
+    "id": "s8",
+    "positionId": "p8",
+    "volunteerId": null,
+    "startTime": "2024-10-26T14:00:00.000Z",
+    "endTime": "2024-10-26T18:00:00.000Z",
+    "assemblyId": "a1"
+  }
+]

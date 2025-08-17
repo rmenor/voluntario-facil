@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { format, formatISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -14,7 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Users, Calendar, Pencil, Globe, Map } from 'lucide-react';
+import { PlusCircle, Users, Calendar, Pencil, Globe, Map, Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
@@ -31,15 +32,6 @@ function CreateSubmitButton() {
   );
 }
 
-function EditSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? 'Guardando...' : 'Guardar Cambios'}
-    </Button>
-  );
-}
-
 const getInitials = (name: string) => {
     const names = name.split(' ');
     if (names.length > 1) {
@@ -48,84 +40,13 @@ const getInitials = (name: string) => {
     return name.substring(0, 2);
 };
 
-function EditAssemblyForm({ assembly, volunteers, closeDialog }: { assembly: PopulatedAssembly, volunteers: User[], closeDialog: () => void }) {
-    const [state, formAction] = useActionState(updateAssembly, { success: false, error: null, message: null });
-    const { toast } = useToast();
-    const formRef = useRef<HTMLFormElement>(null);
-
-    useEffect(() => {
-        if (state.success) {
-            toast({ title: 'Éxito', description: state.message });
-            closeDialog();
-        } else if (state.error) {
-            toast({ variant: 'destructive', title: 'Error', description: state.error });
-        }
-    }, [state, toast, closeDialog]);
-
-    return (
-        <form action={formAction} ref={formRef} className="space-y-4">
-            <input type="hidden" name="assemblyId" value={assembly.id} />
-            <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input id="title" name="title" required defaultValue={assembly.title} />
-            </div>
-             <div className="space-y-2">
-              <Label>Tipo</Label>
-              <RadioGroup name="type" defaultValue={assembly.type} className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="regional" id="type-regional-edit" />
-                  <Label htmlFor="type-regional-edit" className="font-normal">Regional</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="circuito" id="type-circuito-edit" />
-                  <Label htmlFor="type-circuito-edit" className="font-normal">Circuito</Label>
-                </div>
-              </RadioGroup>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="startDate">Fecha de Inicio</Label>
-                    <Input id="startDate" name="startDate" type="date" required defaultValue={formatISO(assembly.startDate, { representation: 'date' })} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="endDate">Fecha de Fin</Label>
-                    <Input id="endDate" name="endDate" type="date" required defaultValue={formatISO(assembly.endDate, { representation: 'date' })} />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Voluntarios</Label>
-              <ScrollArea className="h-40 rounded-md border p-4">
-                <div className="space-y-2">
-                  {volunteers.map(volunteer => (
-                    <div key={volunteer.id} className="flex items-center space-x-2">
-                       <Checkbox 
-                        id={`volunteer-${volunteer.id}`} 
-                        name="volunteerIds"
-                        value={volunteer.id}
-                        defaultChecked={assembly.volunteerIds.includes(volunteer.id)}
-                      />
-                      <Label htmlFor={`volunteer-${volunteer.id}`} className="font-normal">{volunteer.name}</Label>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-
-            <DialogFooter>
-                <DialogClose asChild><Button variant="ghost">Cancelar</Button></DialogClose>
-                <EditSubmitButton />
-            </DialogFooter>
-        </form>
-    )
-}
 
 export default function AssembliesTab({ initialAssemblies, volunteers }: { initialAssemblies: PopulatedAssembly[], volunteers: User[] }) {
   const [addState, addFormAction] = useActionState(addAssembly, { success: false, error: null, message: null });
   const { toast } = useToast();
   const [isCreateOpen, setCreateOpen] = useState(false);
-  const [editingAssembly, setEditingAssembly] = useState<PopulatedAssembly | null>(null);
   const createFormRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (addState.success) {
@@ -203,7 +124,7 @@ export default function AssembliesTab({ initialAssemblies, volunteers }: { initi
                         <CardDescription>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 <Calendar className="h-4 w-4" />
-                                <span>{format(assembly.startDate, "d MMM", {locale: es})} - {format(assembly.endDate, "d MMM, yyyy", {locale: es})}</span>
+                                <span>{format(new Date(assembly.startDate), "d MMM", {locale: es})} - {format(new Date(assembly.endDate), "d MMM, yyyy", {locale: es})}</span>
                             </div>
                         </CardDescription>
                     </CardHeader>
@@ -238,23 +159,14 @@ export default function AssembliesTab({ initialAssemblies, volunteers }: { initi
                          </div>
                     </CardContent>
                     <CardFooter>
-                         <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingAssembly(assembly)}>
-                            <Pencil className="mr-2 h-3 w-3" /> Editar
+                         <Button variant="outline" size="sm" className="w-full" onClick={() => router.push(`/admin/${assembly.id}`)}>
+                            <Eye className="mr-2 h-3 w-3" /> Ver Panel
                         </Button>
                     </CardFooter>
                 </Card>
             ))}
         </div>
       </CardContent>
-
-      <Dialog open={!!editingAssembly} onOpenChange={(isOpen) => !isOpen && setEditingAssembly(null)}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Editar Asamblea</DialogTitle>
-            </DialogHeader>
-            {editingAssembly && <EditAssemblyForm assembly={editingAssembly} volunteers={volunteers} closeDialog={() => setEditingAssembly(null)} />}
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

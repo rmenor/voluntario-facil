@@ -1,0 +1,32 @@
+[
+  {
+    "id": "a1",
+    "title": "Adoración Pura",
+    "startDate": "2024-10-26T00:00:00.000Z",
+    "endDate": "2024-10-27T23:59:59.000Z",
+    "volunteerIds": [
+      "2",
+      "3",
+      "4"
+    ],
+    "type": "regional"
+  },
+  {
+    "id": "a2",
+    "title": "Asamblea de Circuito",
+    "startDate": "2024-08-15T00:00:00.000Z",
+    "endDate": "2024-08-15T23:59:59.000Z",
+    "volunteerIds": [
+      "2"
+    ],
+    "type": "circuito"
+  },
+  {
+    "id": "ga0g3sz6p",
+    "title": "Probando",
+    "startDate": "2025-08-23T00:00:00.000Z",
+    "endDate": "2025-08-23T00:00:00.000Z",
+    "type": "circuito",
+    "volunteerIds": []
+  }
+]

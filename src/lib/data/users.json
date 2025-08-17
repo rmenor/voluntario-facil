@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1",
+    "name": "Admin User",
+    "phone": "123-456-7890",
+    "email": "admin@example.com",
+    "role": "admin",
+    "passwordHash": "adminpassword"
+  },
+  {
+    "id": "2",
+    "name": "Andrés García",
+    "phone": "234-567-8901",
+    "email": "andres@example.com",
+    "role": "volunteer",
+    "passwordHash": "password"
+  },
+  {
+    "id": "3",
+    "name": "Carlos Rodriguez",
+    "phone": "345-678-9012",
+    "email": "carlos@example.com",
+    "role": "volunteer",
+    "passwordHash": "password"
+  },
+  {
+    "id": "4",
+    "name": "Benito López",
+    "phone": "456-789-0123",
+    "email": "benito@example.com",
+    "role": "volunteer",
+    "passwordHash": "password"
+  },
+  {
+    "id": "5",
+    "name": "Admin Secundario",
+    "phone": "555-555-5555",
+    "email": "admin2@example.com",
+    "role": "admin",
+    "passwordHash": "adminpassword"
+  }
+]

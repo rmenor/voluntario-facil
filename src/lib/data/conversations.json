@@ -1,0 +1,30 @@
+[
+  {
+    "id": "c1",
+    "name": "Coordinación General",
+    "participantIds": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ]
+  },
+  {
+    "id": "c2",
+    "name": "Turno Sábado Mañana",
+    "participantIds": [
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  {
+    "id": "c3",
+    "name": "Andrés y Admin",
+    "participantIds": [
+      "1",
+      "2"
+    ]
+  }
+]

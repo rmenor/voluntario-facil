@@ -1,220 +1,354 @@
 'use server';
 
-import type { Position, PopulatedShift, Shift, User, Assembly, PopulatedAssembly, Conversation, PopulatedConversation, Message } from '@/lib/types';
-import db from '@/lib/db';
+import type { Position, PopulatedShift, Shift, User, Assembly, PopulatedAssembly, Conversation, PopulatedConversation, ChatMessage } from '@/lib/types';
+import { initialUsers, initialPositions, initialAssemblies, initialShifts, initialConversations, initialMessages } from '@/lib/mock-data';
+import fs from 'fs';
+import path from 'path';
 
+// --- File-based persistence ---
+const dataDir = path.join(process.cwd(), 'src', 'lib', 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const usersPath = path.join(dataDir, 'users.json');
+const positionsPath = path.join(dataDir, 'positions.json');
+const assembliesPath = path.join(dataDir, 'assemblies.json');
+const shiftsPath = path.join(dataDir, 'shifts.json');
+const conversationsPath = path.join(dataDir, 'conversations.json');
+const messagesPath = path.join(dataDir, 'messages.json');
+
+const readData = <T>(filePath: string, initialData: T): T => {
+  try {
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(fileContent) as T;
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(initialData, null, 2), 'utf-8');
+      return initialData;
+    }
+  } catch (error) {
+    console.error(`Error reading data from ${filePath}:`, error);
+    // If parsing fails, fall back to initial data
+    return initialData;
+  }
+};
+
+const writeData = <T>(filePath: string, data: T) => {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error(`Error writing data to ${filePath}:`, error);
+  }
+};
+
+// --- In-memory data store, initialized from files ---
+let users: User[] = readData(usersPath, initialUsers);
+let positions: Position[] = readData(positionsPath, initialPositions);
+let assemblies: Assembly[] = readData(assembliesPath, initialAssemblies.map(a => {
+    const { volunteers, ...rest } = a;
+    return rest;
+}));
+let shifts: Shift[] = readData(shiftsPath, initialShifts.map(s => {
+    const { position, volunteer, assembly, ...rest } = s;
+    return rest;
+}));
+let conversations: Conversation[] = readData(conversationsPath, initialConversations);
+let messages: ChatMessage[] = readData(messagesPath, initialMessages);
+
+const parseDatesInObject = <T extends { startTime?: any, endTime?: any, startDate?: any, endDate?: any, timestamp?: any }>(item: T): T => {
+    const newItem = { ...item };
+    if (item.startTime && typeof item.startTime === 'string') newItem.startTime = new Date(item.startTime);
+    if (item.endTime && typeof item.endTime === 'string') newItem.endTime = new Date(item.endTime);
+    if (item.startDate && typeof item.startDate === 'string') newItem.startDate = new Date(item.startDate);
+    if (item.endDate && typeof item.endDate === 'string') newItem.endDate = new Date(item.endDate);
+    if (item.timestamp && typeof item.timestamp === 'string') newItem.timestamp = new Date(item.timestamp);
+    return newItem;
+};
+
+const parseDatesInArray = <T extends { startTime?: any, endTime?: any, startDate?: any, endDate?: any, timestamp?: any }>(items: T[]): T[] => {
+    return items.map(parseDatesInObject);
+};
+
+// Parse dates after reading from JSON
+shifts = parseDatesInArray(shifts);
+assemblies = parseDatesInArray(assemblies);
+messages = parseDatesInArray(messages);
+
+// Helper to generate IDs
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const getAssemblyVolunteerIds = (assemblyId: string): string[] => {
-  const rows = db.prepare('SELECT volunteerId FROM assembly_volunteers WHERE assemblyId = ?').all(assemblyId) as { volunteerId: string }[];
-  return rows.map(r => r.volunteerId);
-};
+// --- API Functions ---
 
 // Users
 export const getUsers = async (): Promise<User[]> => {
-  return db.prepare('SELECT * FROM users').all() as User[];
+    return JSON.parse(JSON.stringify(users));
 };
 
 export const getUser = async (id: string): Promise<User | null> => {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | undefined;
-  return row || null;
-};
+    const user = users.find(u => u.id === id);
+    return user ? JSON.parse(JSON.stringify(user)) : null;
+}
 
 export const getUserByEmail = async (email: string): Promise<User | undefined> => {
-  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
-  return row;
-};
+    const user = users.find(u => u.email === email);
+    return user ? JSON.parse(JSON.stringify(user)) : undefined;
+}
 
 // Positions
-export const getPositions = async (): Promise<Position[]> => {
-  return db.prepare('SELECT * FROM positions').all() as Position[];
+export const getPositions = async (assemblyId?: string): Promise<Position[]> => {
+    const allPositions = JSON.parse(JSON.stringify(positions));
+    if (assemblyId) {
+        return allPositions.filter((p: Position) => p.assemblyId === assemblyId);
+    }
+    return allPositions;
 };
+
 
 // Assemblies
-export const getAssemblies = async (): Promise<Assembly[]> => {
-  const rows = db.prepare('SELECT * FROM assemblies ORDER BY startDate DESC').all() as any[];
-  return rows.map(r => ({
-    id: r.id,
-    title: r.title,
-    startDate: new Date(r.startDate),
-    endDate: new Date(r.endDate),
-    volunteerIds: getAssemblyVolunteerIds(r.id),
-    type: r.type
-  }));
-};
-
 export const getPopulatedAssemblies = async (): Promise<PopulatedAssembly[]> => {
-  const assemblies = await getAssemblies();
-  const stmt = db.prepare('SELECT u.* FROM users u JOIN assembly_volunteers av ON u.id = av.volunteerId WHERE av.assemblyId = ?');
-  return assemblies.map(a => ({
-    ...a,
-    volunteers: stmt.all(a.id) as User[]
-  }));
-};
+    const populatedAssemblies = assemblies.map(assembly => {
+        const assemblyVolunteers = users.filter(user => assembly.volunteerIds.includes(user.id));
+        return {
+            ...assembly,
+            volunteers: assemblyVolunteers
+        };
+    });
+    const stringified = JSON.stringify(populatedAssemblies);
+    return parseDatesInArray(JSON.parse(stringified));
+}
+
+export const getAssemblies = async (): Promise<Assembly[]> => {
+    const sorted = assemblies.sort((a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+    const stringified = JSON.stringify(sorted);
+    return parseDatesInArray(JSON.parse(stringified));
+}
 
 // Shifts
-export const getPopulatedShifts = async (): Promise<PopulatedShift[]> => {
-  const rows = db.prepare(`
-    SELECT s.*, p.name as pName, p.description as pDescription, p.iconName as pIconName,
-           a.title as aTitle, a.startDate as aStartDate, a.endDate as aEndDate, a.type as aType,
-           u.id as uId, u.name as uName, u.phone as uPhone, u.email as uEmail, u.role as uRole, u.passwordHash as uPasswordHash
-    FROM shifts s
-    JOIN positions p ON s.positionId = p.id
-    JOIN assemblies a ON s.assemblyId = a.id
-    LEFT JOIN users u ON s.volunteerId = u.id
-  `).all() as any[];
+export const getPopulatedShifts = async (assemblyId?: string): Promise<PopulatedShift[]> => {
+    const relevantShifts = assemblyId ? shifts.filter(s => s.assemblyId === assemblyId) : shifts;
 
-  const shifts = rows.map(r => ({
-    id: r.id,
-    positionId: r.positionId,
-    volunteerId: r.volunteerId,
-    startTime: new Date(r.startTime),
-    endTime: new Date(r.endTime),
-    assemblyId: r.assemblyId,
-    rejectionReason: r.rejectionReason || null,
-    rejectedBy: r.rejectedBy || null,
-    position: { id: r.positionId, name: r.pName, description: r.pDescription, iconName: r.pIconName },
-    volunteer: r.volunteerId ? { id: r.uId, name: r.uName, phone: r.uPhone, email: r.uEmail, role: r.uRole, passwordHash: r.uPasswordHash } : null,
-    assembly: { id: r.assemblyId, title: r.aTitle, startDate: new Date(r.aStartDate), endDate: new Date(r.aEndDate), volunteerIds: getAssemblyVolunteerIds(r.assemblyId), type: r.aType }
-  })) as PopulatedShift[];
+    const populated = relevantShifts.map(shift => {
+        const position = positions.find(p => p.id === shift.positionId);
+        const assembly = assemblies.find(a => a.id === shift.assemblyId);
+        if (!position || !assembly) return null;
 
-  return shifts.sort((a,b) => a.startTime.getTime() - b.startTime.getTime());
+        return {
+            ...shift,
+            position,
+            volunteer: shift.volunteerId ? users.find(u => u.id === shift.volunteerId) || null : null,
+            assembly,
+        };
+    }).filter((s): s is PopulatedShift => s !== null);
+    
+    const sorted = populated.sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    const stringified = JSON.stringify(sorted);
+    return parseDatesInArray(JSON.parse(stringified));
 };
 
-// CRUD Operations
+// --- CHAT ---
+export const getConversationsForUser = async (userId: string): Promise<Conversation[]> => {
+    const userConversations = conversations.filter(c => c.participantIds.includes(userId));
+    const populated = userConversations.map(c => {
+        const lastMessage = messages
+            .filter(m => m.conversationId === c.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        return { ...c, lastMessage: lastMessage || null };
+    });
+    const sorted = populated.sort((a, b) => {
+        if (!a.lastMessage) return 1;
+        if (!b.lastMessage) return -1;
+        return new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime();
+    });
+    const stringified = JSON.stringify(sorted);
+    return parseDatesInArray(JSON.parse(stringified));
+};
+
+export const getPopulatedConversation = async (conversationId: string, userId: string): Promise<PopulatedConversation | null> => {
+    const conversation = conversations.find(c => c.id === conversationId);
+
+    if (!conversation || !conversation.participantIds.includes(userId)) {
+        return null;
+    }
+
+    const conversationMessages = messages
+        .filter(m => m.conversationId === conversationId)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const participants = users.filter(u => conversation.participantIds.includes(u.id));
+
+    const populated: PopulatedConversation = {
+        ...conversation,
+        messages: conversationMessages,
+        participants,
+    };
+    
+    const stringified = JSON.stringify(populated);
+    return parseDatesInObject(JSON.parse(stringified));
+};
+
+export const addMessageToConversation = async (conversationId: string, senderId: string, text: string): Promise<ChatMessage> => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation || !conversation.participantIds.includes(senderId)) {
+        throw new Error("User not in conversation");
+    }
+
+    const newMessage: ChatMessage = {
+        id: generateId(),
+        conversationId,
+        senderId,
+        text,
+        timestamp: new Date(),
+    };
+    messages.push(newMessage);
+    writeData(messagesPath, messages);
+    return parseDatesInObject(JSON.parse(JSON.stringify(newMessage)));
+};
+
+
+// --- CRUD Operations (for Server Actions) ---
 export const addUser = async (userData: Omit<User, 'id' | 'passwordHash'> & { password?: string }) => {
-  const newUser: User = { id: generateId(), ...userData, passwordHash: userData.password || 'password' };
-  db.prepare('INSERT INTO users (id, name, phone, email, role, passwordHash) VALUES (@id, @name, @phone, @email, @role, @passwordHash)').run(newUser);
-  return newUser;
+    const newUser: User = {
+        id: generateId(),
+        ...userData,
+        passwordHash: userData.password || 'password'
+    };
+    users.push(newUser);
+    writeData(usersPath, users);
+    return newUser;
 };
 
 export const updateUser = async (userId: string, userData: Partial<Omit<User, 'id' | 'passwordHash'>>) => {
-  const sets = Object.keys(userData).map(k => `${k} = @${k}`).join(', ');
-  db.prepare(`UPDATE users SET ${sets} WHERE id = @id`).run({ id: userId, ...userData });
-  return getUser(userId);
-};
+    const userIndex = users.findIndex(u => u.id === userId);
+    if(userIndex > -1) {
+        users[userIndex] = { ...users[userIndex], ...userData };
+        writeData(usersPath, users);
+    }
+    return users[userIndex];
+}
+
+export const deleteUser = async (userId: string) => {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if(userIndex === -1) {
+        throw new Error("User not found");
+    }
+    
+    users.splice(userIndex, 1);
+
+    shifts.forEach(shift => {
+        if(shift.volunteerId === userId) {
+            shift.volunteerId = null;
+        }
+    });
+
+    assemblies.forEach(assembly => {
+        const volunteerIndex = assembly.volunteerIds.indexOf(userId);
+        if(volunteerIndex > -1) {
+            assembly.volunteerIds.splice(volunteerIndex, 1);
+        }
+    });
+    
+    conversations.forEach(conversation => {
+        const participantIndex = conversation.participantIds.indexOf(userId);
+        if(participantIndex > -1) {
+            conversation.participantIds.splice(participantIndex, 1);
+        }
+    });
+    
+    writeData(usersPath, users);
+    writeData(shiftsPath, shifts);
+    writeData(assembliesPath, assemblies);
+    writeData(conversationsPath, conversations);
+}
 
 export const addPosition = async (positionData: Omit<Position, 'id'>) => {
-  const newPosition: Position = { id: generateId(), ...positionData };
-  db.prepare('INSERT INTO positions (id, name, description, iconName) VALUES (@id, @name, @description, @iconName)').run(newPosition);
-  return newPosition;
+    const newPosition: Position = { id: generateId(), ...positionData };
+    positions.push(newPosition);
+    writeData(positionsPath, positions);
+    return newPosition;
+};
+
+export const updatePosition = async (positionId: string, positionData: Partial<Omit<Position, 'id'>>) => {
+    const index = positions.findIndex(p => p.id === positionId);
+    if (index !== -1) {
+        positions[index] = { ...positions[index], ...positionData };
+        writeData(positionsPath, positions);
+    }
+};
+
+export const deletePosition = async (positionId: string) => {
+    const index = positions.findIndex(p => p.id === positionId);
+    if (index === -1) {
+        throw new Error("Position not found");
+    }
+    positions.splice(index, 1);
+
+    shifts.forEach(shift => {
+        if (shift.positionId === positionId) {
+            shift.volunteerId = null; 
+            shift.rejectionReason = 'Posición eliminada';
+        }
+    });
+
+    writeData(positionsPath, positions);
+    writeData(shiftsPath, shifts);
 };
 
 export const addAssembly = async (assemblyData: Omit<Assembly, 'id' | 'volunteerIds'>) => {
-  const newAssembly: Assembly = { id: generateId(), ...assemblyData, volunteerIds: [] };
-  db.prepare('INSERT INTO assemblies (id, title, startDate, endDate, type) VALUES (@id, @title, @startDate, @endDate, @type)').run({ ...newAssembly, startDate: newAssembly.startDate.toISOString(), endDate: newAssembly.endDate.toISOString() });
-  return newAssembly;
+    const newAssembly: Assembly = {
+        id: generateId(),
+        ...assemblyData,
+        volunteerIds: [],
+    };
+    assemblies.push(newAssembly);
+    writeData(assembliesPath, assemblies);
+    return newAssembly;
 };
 
 export const updateAssembly = async (assemblyId: string, assemblyData: Partial<Omit<Assembly, 'id'>>) => {
-  const data: any = { ...assemblyData };
-  if (data.startDate) data.startDate = data.startDate.toISOString();
-  if (data.endDate) data.endDate = data.endDate.toISOString();
-  const sets = Object.keys(data).map(k => `${k} = @${k}`).join(', ');
-  if (sets) db.prepare(`UPDATE assemblies SET ${sets} WHERE id = @id`).run({ id: assemblyId, ...data });
+    const index = assemblies.findIndex(a => a.id === assemblyId);
+    if (index !== -1) {
+        assemblies[index] = { ...assemblies[index], ...assemblyData };
+        writeData(assembliesPath, assemblies);
+    }
 };
 
 export const associateVolunteerToAssembly = async (assemblyId: string, volunteerId: string) => {
-  db.prepare('INSERT OR IGNORE INTO assembly_volunteers (assemblyId, volunteerId) VALUES (?, ?)').run(assemblyId, volunteerId);
-};
+    const assembly = assemblies.find(a => a.id === assemblyId);
+    if (assembly && !assembly.volunteerIds.includes(volunteerId)) {
+        assembly.volunteerIds.push(volunteerId);
+        writeData(assembliesPath, assemblies);
+    }
+}
 
 export const addShift = async (shiftData: Omit<Shift, 'id' | 'rejectionReason' | 'rejectedBy'>) => {
-  const newShift: Shift = { id: generateId(), ...shiftData };
-  db.prepare('INSERT INTO shifts (id, positionId, volunteerId, startTime, endTime, assemblyId) VALUES (@id, @positionId, @volunteerId, @startTime, @endTime, @assemblyId)').run({ ...newShift, startTime: newShift.startTime.toISOString(), endTime: newShift.endTime.toISOString() });
-  return newShift;
+    const newShift: Shift = { id: generateId(), ...shiftData };
+    shifts.push(newShift);
+    writeData(shiftsPath, shifts);
+    return newShift;
 };
 
 export const updateShift = async (shiftId: string, volunteerId: string | null) => {
-  db.prepare('UPDATE shifts SET volunteerId = ?, rejectionReason = NULL, rejectedBy = NULL WHERE id = ?').run(volunteerId, shiftId);
+    const shift = shifts.find(s => s.id === shiftId);
+    if (shift) {
+        shift.volunteerId = volunteerId;
+        delete shift.rejectionReason;
+        delete shift.rejectedBy;
+        writeData(shiftsPath, shifts);
+    }
 };
 
 export const rejectShift = async (shiftId: string, volunteerId: string, reason: string | null) => {
-  if (!volunteerId) throw new Error('Cannot reject a shift without a volunteer.');
-  db.prepare('UPDATE shifts SET volunteerId = NULL, rejectionReason = ?, rejectedBy = ? WHERE id = ?').run(reason || 'Sin motivo', volunteerId, shiftId);
-};
+    const shift = shifts.find(s => s.id === shiftId);
+    if (!shift || !volunteerId) {
+        throw new Error('Cannot reject a shift without a volunteer.');
+    }
+    
+    shift.volunteerId = null;
+    shift.rejectionReason = reason || 'Sin motivo';
+    shift.rejectedBy = volunteerId;
+    writeData(shiftsPath, shifts);
+}
 
-// Conversations
-export const getConversationsForUser = async (userId: string): Promise<Conversation[]> => {
-  const rows = db.prepare(
-    `SELECT c.id, c.name FROM conversations c JOIN conversation_participants cp ON cp.conversationId = c.id WHERE cp.userId = ?`
-  ).all(userId) as { id: string; name: string | null }[];
-
-  return rows.map(r => {
-    const participantIds = db
-      .prepare('SELECT userId FROM conversation_participants WHERE conversationId = ?')
-      .all(r.id) as { userId: string }[];
-    const lastRow = db
-      .prepare('SELECT id, senderId, text, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp DESC LIMIT 1')
-      .get(r.id) as any;
-    const lastMessage = lastRow
-      ? {
-          id: lastRow.id,
-          conversationId: r.id,
-          senderId: lastRow.senderId,
-          text: lastRow.text,
-          timestamp: new Date(lastRow.timestamp),
-        }
-      : undefined;
-    return {
-      id: r.id,
-      name: r.name,
-      participantIds: participantIds.map(p => p.userId),
-      lastMessage,
-    } as Conversation;
-  });
-};
-
-export const getPopulatedConversation = async (
-  conversationId: string,
-  userId: string
-): Promise<PopulatedConversation | null> => {
-  const conv = db
-    .prepare('SELECT id, name FROM conversations WHERE id = ?')
-    .get(conversationId) as { id: string; name: string | null } | undefined;
-  if (!conv) return null;
-
-  const participants = db
-    .prepare('SELECT u.* FROM users u JOIN conversation_participants cp ON u.id = cp.userId WHERE cp.conversationId = ?')
-    .all(conversationId) as User[];
-  const participantIds = participants.map(p => p.id);
-  if (!participantIds.includes(userId)) return null;
-
-  const messageRows = db
-    .prepare('SELECT id, conversationId, senderId, text, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp ASC')
-    .all(conversationId) as any[];
-  const messages: Message[] = messageRows.map(m => ({
-    id: m.id,
-    conversationId: m.conversationId,
-    senderId: m.senderId,
-    text: m.text,
-    timestamp: new Date(m.timestamp),
-  }));
-  const lastMessage = messages[messages.length - 1];
-
-  return {
-    id: conv.id,
-    name: conv.name,
-    participantIds,
-    participants,
-    messages,
-    lastMessage,
-  };
-};
-
-export const addMessageToConversation = async (
-  conversationId: string,
-  senderId: string,
-  text: string
-) => {
-  const newMessage: Message = {
-    id: generateId(),
-    conversationId,
-    senderId,
-    text,
-    timestamp: new Date(),
-  };
-  db.prepare(
-    'INSERT INTO messages (id, conversationId, senderId, text, timestamp) VALUES (@id, @conversationId, @senderId, @text, @timestamp)'
-  ).run({ ...newMessage, timestamp: newMessage.timestamp.toISOString() });
-  return newMessage;
-};
+    

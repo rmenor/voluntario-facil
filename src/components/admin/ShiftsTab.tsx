@@ -71,14 +71,12 @@ function RejectionNote({ shift }: { shift: PopulatedShift }) {
 }
 
 
-export default function ShiftsTab({ initialShifts, positions, volunteers, assemblies }: { initialShifts: PopulatedShift[], positions: Position[], volunteers: User[], assemblies: PopulatedAssembly[] }) {
+export default function ShiftsTab({ initialShifts, positions, volunteers, assembly }: { initialShifts: PopulatedShift[], positions: Position[], volunteers: User[], assembly: PopulatedAssembly }) {
   const [state, formAction] = useActionState(addShift, { success: false, error: null, message: null });
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [selectedAssembly, setSelectedAssembly] = useState<string>('all');
-  const [selectedAssemblyForCreation, setSelectedAssemblyForCreation] = useState<string | null>(assemblies[0]?.id || null);
   const isMobile = useIsMobile();
   const router = useRouter();
 
@@ -94,7 +92,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
 
   const handleAssignVolunteer = (shiftId: string, volunteerId: string) => {
     startTransition(async () => {
-      const result = await assignVolunteerToShift(shiftId, volunteerId === 'null' ? null : volunteerId);
+      const result = await assignVolunteerToShift(shiftId, volunteerId === 'null' ? null : volunteerId, assembly.id);
       if (result.success) {
         toast({ title: 'Éxito', description: 'Voluntario asignado correctamente.' });
       } else {
@@ -104,30 +102,11 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
   };
 
   const handlePrint = () => {
-    const url = `/admin/print?assemblyId=${selectedAssembly}`;
+    const url = `/admin/print?assemblyId=${assembly.id}`;
     window.open(url, '_blank');
   }
 
-  const filteredShifts = useMemo(() => {
-    if (selectedAssembly === 'all') return initialShifts;
-    return initialShifts.filter(shift => shift.assemblyId === selectedAssembly);
-  }, [initialShifts, selectedAssembly]);
-  
-  const assemblyVolunteers = useMemo(() => {
-    if (!selectedAssemblyForCreation) return [];
-    const assembly = assemblies.find(a => a.id === selectedAssemblyForCreation);
-    return assembly ? assembly.volunteers : [];
-  }, [selectedAssemblyForCreation, assemblies]);
-  
-  const getVolunteersForShiftAssembly = (shift: PopulatedShift) => {
-    const assembly = assemblies.find(a => a.id === shift.assemblyId);
-    return assembly ? assembly.volunteers : [];
-  }
-
-
-  const getDaysForAssembly = (assemblyId: string | null) => {
-    if (!assemblyId) return [];
-    const assembly = assemblies.find(a => a.id === assemblyId);
+  const getDaysForAssembly = (assembly: PopulatedAssembly) => {
     if (!assembly) return [];
 
     const days = [];
@@ -143,9 +122,8 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
 
   const renderMobileView = () => (
      <div className="space-y-4">
-        {filteredShifts.map(shift => {
+        {initialShifts.map(shift => {
           const Icon = LucideIcons[shift.position.iconName as keyof typeof LucideIcons] as React.ElementType;
-          const shiftAssemblyVolunteers = getVolunteersForShiftAssembly(shift);
           return (
             <Card key={shift.id} className={shift.rejectionReason ? 'border-destructive/50' : ''}>
               <CardHeader>
@@ -157,13 +135,13 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
                     {getStatusBadge(shift)}
                 </div>
                 <CardDescription>
-                  {format(shift.startTime, "eeee, d 'de' MMMM", { locale: es })}
+                  {format(new Date(shift.startTime), "eeee, d 'de' MMMM", { locale: es })}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className='flex items-center text-sm'>
                   <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>{format(shift.startTime, 'HH:mm')} - {format(shift.endTime, 'HH:mm')}</span>
+                  <span>{format(new Date(shift.startTime), 'HH:mm')} - {format(new Date(shift.endTime), 'HH:mm')}</span>
                 </div>
                 <div className='flex items-center text-sm'>
                    <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -182,7 +160,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
                                   <span>Sin asignar</span>
                               </div>
                           </SelectItem>
-                          {shiftAssemblyVolunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                          {volunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
                       </SelectContent>
                   </Select>
                 </div>
@@ -215,17 +193,16 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredShifts.map(shift => {
+          {initialShifts.map(shift => {
             const Icon = LucideIcons[shift.position.iconName as keyof typeof LucideIcons] as React.ElementType;
-            const shiftAssemblyVolunteers = getVolunteersForShiftAssembly(shift);
             return (
               <TableRow key={shift.id} className={shift.rejectionReason ? 'bg-destructive/10' : ''}>
-                <TableCell>{format(shift.startTime, 'dd/MM/yyyy')}</TableCell>
+                <TableCell>{format(new Date(shift.startTime), 'dd/MM/yyyy')}</TableCell>
                 <TableCell className="font-medium flex items-center gap-2">
                   {Icon && <Icon className="h-5 w-5 text-primary" />}
                   {shift.position.name}
                 </TableCell>
-                <TableCell>{format(shift.startTime, 'HH:mm')} - {format(shift.endTime, 'HH:mm')}</TableCell>
+                <TableCell>{format(new Date(shift.startTime), 'HH:mm')} - {format(new Date(shift.endTime), 'HH:mm')}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                       <Select
@@ -243,7 +220,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
                               <span>Sin asignar</span>
                             </div>
                           </SelectItem>
-                          {shiftAssemblyVolunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                          {volunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                   </div>
@@ -264,47 +241,29 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
         <div>
           <CardTitle>Gestionar Turnos</CardTitle>
-          <CardDescription>Crear y asignar turnos a los voluntarios.</CardDescription>
+          <CardDescription>Crear y asignar turnos para esta asamblea.</CardDescription>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Select onValueChange={setSelectedAssembly} value={selectedAssembly || ''}>
-            <SelectTrigger className="w-full sm:w-[280px]">
-              <SelectValue placeholder="Selecciona una asamblea" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las Asambleas</SelectItem>
-              {assemblies.map(a => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" /> Imprimir
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button disabled={!selectedAssemblyForCreation}><PlusCircle className="mr-2 h-4 w-4" />Crear Turno</Button>
+              <Button><PlusCircle className="mr-2 h-4 w-4" />Crear Turno</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Nuevo Turno</DialogTitle>
               </DialogHeader>
               <form action={formAction} ref={formRef} className="space-y-4">
-                <input type="hidden" name="assemblyId" value={selectedAssemblyForCreation || ''} />
-                <div className="space-y-2">
-                    <Label htmlFor="create-shift-assembly">Asamblea</Label>
-                    <Select name="assemblyId" required onValueChange={setSelectedAssemblyForCreation} value={selectedAssemblyForCreation || ''}>
-                        <SelectTrigger id="create-shift-assembly"><SelectValue placeholder="Selecciona una asamblea" /></SelectTrigger>
-                        <SelectContent>
-                            {assemblies.map(a => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-
+                <input type="hidden" name="assemblyId" value={assembly.id} />
+                
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha del turno</Label>
                   <Select name="date" required>
                     <SelectTrigger><SelectValue placeholder="Selecciona una fecha" /></SelectTrigger>
                     <SelectContent>
-                      {getDaysForAssembly(selectedAssemblyForCreation).map(day => (
+                      {getDaysForAssembly(assembly).map(day => (
                         <SelectItem key={day.toISOString()} value={formatISO(day, { representation: 'date' })}>
                           {format(day, "eeee, d 'de' MMMM", { locale: es })}
                         </SelectItem>
@@ -337,7 +296,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
                     <SelectTrigger><SelectValue placeholder="Selecciona un voluntario" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="null">Sin asignar</SelectItem>
-                      {assemblyVolunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                      {volunteers.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -351,7 +310,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
         </div>
       </CardHeader>
       <CardContent>
-        {filteredShifts.length > 0 ? (
+        {initialShifts.length > 0 ? (
           isMobile ? renderMobileView() : renderDesktopView()
         ) : (
           <div className="text-center py-16 px-4">
@@ -364,3 +323,5 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
     </Card>
   );
 }
+
+    

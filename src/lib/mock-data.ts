@@ -1,4 +1,4 @@
-import type { Position, PopulatedShift, User, PopulatedAssembly, Shift, Assembly, Conversation, Message } from '@/lib/types';
+import type { Position, PopulatedShift, User, PopulatedAssembly, Shift, Assembly, Conversation, ChatMessage, PopulatedConversation } from '@/lib/types';
 
 export const initialUsers: User[] = [
   { id: '1', name: 'Admin User', phone: '123-456-7890', email: 'admin@example.com', role: 'admin', passwordHash: 'adminpassword' },
@@ -9,14 +9,14 @@ export const initialUsers: User[] = [
 ];
 
 export const initialPositions: Position[] = [
-  { id: 'p1', name: 'Posición 1', description: 'Control de estacionamiento - Sector A', iconName: 'ParkingCircle' },
-  { id: 'p2', name: 'Posición 2', description: 'Control de estacionamiento - Sector B', iconName: 'ParkingCircle' },
-  { id: 'p3', name: 'Posición 3', description: 'Control de estacionamiento - Sector C', iconName: 'ParkingCircle' },
-  { id: 'p4', name: 'Posición 4', description: 'Control de estacionamiento - Sector D', iconName: 'ParkingCircle' },
-  { id: 'p5', name: 'Posición 5', description: 'Control de estacionamiento - Apoyo logístico', iconName: 'TrafficCone' },
-  { id: 'p6', name: 'Posición 6', description: 'Control de estacionamiento - Supervisión', iconName: 'UserCheck' },
-  { id: 'p7', name: 'Posición 7', description: 'Control de estacionamiento - Comunicación', iconName: 'RadioTower' },
-  { id: 'p8', name: 'Posición 8', description: 'Control de estacionamiento - Registro', iconName: 'ClipboardCheck' },
+  { id: 'p1', name: 'Posición 1', description: 'Control de estacionamiento - Sector A', iconName: 'ParkingCircle', assemblyId: 'a1' },
+  { id: 'p2', name: 'Posición 2', description: 'Control de estacionamiento - Sector B', iconName: 'ParkingCircle', assemblyId: 'a1' },
+  { id: 'p3', name: 'Posición 3', description: 'Control de estacionamiento - Sector C', iconName: 'ParkingCircle', assemblyId: 'a1' },
+  { id: 'p4', name: 'Posición 4', description: 'Control de estacionamiento - Sector D', iconName: 'ParkingCircle', assemblyId: 'a1' },
+  { id: 'p5', name: 'Posición 5', description: 'Control de estacionamiento - Apoyo logístico', iconName: 'TrafficCone', assemblyId: 'a1' },
+  { id: 'p6', name: 'Posición 6', description: 'Control de estacionamiento - Supervisión', iconName: 'UserCheck', assemblyId: 'a1' },
+  { id: 'p7', name: 'Posición 7', description: 'Control de estacionamiento - Comunicación', iconName: 'RadioTower', assemblyId: 'a2' },
+  { id: 'p8', name: 'Posición 8', description: 'Control de estacionamiento - Registro', iconName: 'ClipboardCheck', assemblyId: 'a2' },
 ];
 
 const assembly1VolunteerIds = ['2', '3', '4'];
@@ -140,26 +140,52 @@ export const initialShifts: PopulatedShift[] = [
 ];
 
 export const initialConversations: Conversation[] = [
-  {
-    id: 'c1',
-    name: null,
-    participantIds: ['1', '2'],
-  },
+    {
+        id: 'c1',
+        name: 'Coordinación General',
+        participantIds: ['1', '2', '3', '4', '5'],
+    },
+    {
+        id: 'c2',
+        name: 'Turno Sábado Mañana',
+        participantIds: ['1', '2', '3'],
+    },
+    {
+        id: 'c3',
+        name: 'Andrés y Admin',
+        participantIds: ['1', '2'],
+    }
 ];
 
-export const initialMessages: Message[] = [
-  {
-    id: 'm1',
-    conversationId: 'c1',
-    senderId: '1',
-    text: 'Hola Andrés, ¿cómo estás?',
-    timestamp: new Date('2024-07-01T10:00:00'),
-  },
-  {
-    id: 'm2',
-    conversationId: 'c1',
-    senderId: '2',
-    text: 'Todo bien, ¡gracias!',
-    timestamp: new Date('2024-07-01T10:05:00'),
-  },
+export const initialMessages: ChatMessage[] = [
+    {
+        id: 'm1',
+        conversationId: 'c1',
+        senderId: '1',
+        text: '¡Bienvenidos al equipo de voluntarios! Gracias por vuestro apoyo.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+    },
+    {
+        id: 'm2',
+        conversationId: 'c1',
+        senderId: '2',
+        text: '¡Hola! Encantado de estar aquí y ayudar.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1.5),
+    },
+     {
+        id: 'm3',
+        conversationId: 'c2',
+        senderId: '1',
+        text: 'Recordatorio para el turno de mañana: nos vemos a las 8am en el Sector A.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 30),
+    },
+    {
+        id: 'm4',
+        conversationId: 'c3',
+        senderId: '2',
+        text: 'Hola, tengo una pregunta sobre mi turno del domingo.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 5),
+    }
 ];
+
+    

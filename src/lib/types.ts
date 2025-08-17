@@ -14,6 +14,7 @@ export interface Position {
   name: string;
   description: string;
   iconName: keyof typeof import('lucide-react');
+  assemblyId: string;
 }
 
 export interface Assembly {
@@ -46,22 +47,24 @@ export interface PopulatedShift extends Omit<Shift, 'positionId' | 'volunteerId'
   assembly: Assembly;
 }
 
-export interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  text: string;
-  timestamp: Date;
+export interface ChatMessage {
+    id: string;
+    conversationId: string;
+    senderId: string;
+    text: string;
+    timestamp: Date;
 }
 
 export interface Conversation {
-  id: string;
-  name: string | null;
-  participantIds: string[];
-  lastMessage?: Message;
+    id: string;
+    name: string;
+    participantIds: string[];
+    lastMessage?: ChatMessage | null;
 }
 
 export interface PopulatedConversation extends Conversation {
-  participants: User[];
-  messages: Message[];
+    participants: User[];
+    messages: ChatMessage[];
 }
+
+    

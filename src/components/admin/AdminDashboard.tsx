@@ -7,9 +7,7 @@ import AppHeader from '@/components/layout/AppHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Users, MapPin, CalendarClock, GalleryVerticalEnd } from 'lucide-react';
 import type { Position, PopulatedShift, User, PopulatedAssembly } from '@/lib/types';
-import VolunteersTab from './VolunteersTab';
-import PositionsTab from './PositionsTab';
-import ShiftsTab from './ShiftsTab';
+import VoluntariosTab from './VoluntariosTab';
 import AssembliesTab from './AssembliesTab';
 
 interface AdminDashboardProps {
@@ -46,23 +44,15 @@ export default function AdminDashboard({ initialUsers, initialPositions, initial
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold font-headline mb-6">Panel de Administración</h1>
           <Tabs defaultValue="assemblies">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 sm:w-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
               <TabsTrigger value="assemblies"><GalleryVerticalEnd className="mr-2 h-4 w-4"/>Asambleas</TabsTrigger>
-              <TabsTrigger value="shifts"><CalendarClock className="mr-2 h-4 w-4"/>Turnos</TabsTrigger>
               <TabsTrigger value="volunteers"><Users className="mr-2 h-4 w-4"/>Voluntarios</TabsTrigger>
-              <TabsTrigger value="positions"><MapPin className="mr-2 h-4 w-4"/>Posiciones</TabsTrigger>
             </TabsList>
             <TabsContent value="assemblies" className="mt-6">
                 <AssembliesTab initialAssemblies={initialAssemblies} volunteers={initialUsers} />
             </TabsContent>
-            <TabsContent value="shifts" className="mt-6">
-                <ShiftsTab initialShifts={initialShifts} positions={initialPositions} volunteers={initialUsers} assemblies={initialAssemblies} />
-            </TabsContent>
             <TabsContent value="volunteers" className="mt-6">
-                <VolunteersTab initialUsers={initialUsers} />
-            </TabsContent>
-            <TabsContent value="positions" className="mt-6">
-                <PositionsTab initialPositions={initialPositions} />
+                <VoluntariosTab initialUsers={initialUsers} />
             </TabsContent>
           </Tabs>
         </div>

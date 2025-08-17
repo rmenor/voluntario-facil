@@ -1,9 +1,8 @@
 'use server';
 
 import { z } from 'zod';
-import { getUserByEmail, addUser as dbAddVolunteer, updateUser as dbUpdateVolunteer, addPosition as dbAddPosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift, getUser, addMessageToConversation } from '@/lib/data';
+import { getUserByEmail, addUser as dbAddVolunteer, updateUser as dbUpdateVolunteer, deleteUser as dbDeleteUser, addPosition as dbAddPosition, updatePosition as dbUpdatePosition, deletePosition as dbDeletePosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift, getUser, addMessageToConversation } from '@/lib/data';
 import { revalidatePath } from 'next/cache';
-import { useAuth } from '@/hooks/use-auth';
 
 const loginSchema = z.object({
   email: z.string().email('Email no válido'),
@@ -24,15 +23,12 @@ export async function login(prevState: any, formData: FormData) {
   const { email, password } = validatedFields.data;
   const user = await getUserByEmail(email);
 
-  // NOTE: In a real app, you would hash and compare passwords.
-  // For this demo, we are doing a simple string comparison.
   if (!user || user.passwordHash !== password) {
     return {
       error: { form: ['Email o contraseña incorrectos.'] },
     };
   }
   
-  // Omit password from user object returned to the client
   const { passwordHash, ...userWithoutPassword } = user;
   
   return {
@@ -87,6 +83,28 @@ export async function updateVolunteer(prevState: any, formData: FormData) {
     }
 }
 
+const deleteVolunteerSchema = z.object({
+    userId: z.string().min(1, 'ID de usuario no válido'),
+});
+
+export async function deleteVolunteer(prevState: any, formData: FormData) {
+    const validatedFields = deleteVolunteerSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { success: false, error: 'Datos no válidos.' };
+    }
+
+    try {
+        await dbDeleteUser(validatedFields.data.userId);
+        revalidatePath('/admin');
+        revalidatePath('/dashboard');
+        return { success: true, message: 'Voluntario eliminado correctamente.' };
+    } catch (e) {
+        const message = e instanceof Error ? e.message : 'No se pudo eliminar el voluntario.';
+        return { success: false, error: message };
+    }
+}
+
 const updateProfileSchema = z.object({
     userId: z.string().min(1, 'ID de usuario no válido'),
     name: z.string().min(2, 'El nombre es obligatorio'),
@@ -128,8 +146,8 @@ const positionSchema = z.object({
     name: z.string().min(2, 'El nombre es obligatorio'),
     description: z.string().min(1, 'La descripción es obligatoria'),
     iconName: z.string().min(1, 'El icono es obligatorio'),
+    assemblyId: z.string().min(1, 'El ID de asamblea es obligatorio'),
 });
-
 
 export async function addPosition(prevState: any, formData: FormData) {
     const validatedFields = positionSchema.safeParse(Object.fromEntries(formData.entries()));
@@ -139,17 +157,54 @@ export async function addPosition(prevState: any, formData: FormData) {
     }
     
     try {
-        await dbAddPosition({
-          name: validatedFields.data.name,
-          description: validatedFields.data.description,
-          iconName: validatedFields.data.iconName
-        });
-        revalidatePath('/admin');
+        await dbAddPosition(validatedFields.data);
+        revalidatePath(`/admin/${validatedFields.data.assemblyId}`);
         return { success: true, message: 'Posición añadida correctamente.' };
     } catch (e) {
         return { success: false, error: 'No se pudo añadir la posición' };
     }
 }
+
+const updatePositionSchema = positionSchema.extend({
+    positionId: z.string().min(1, 'ID de posición no válido'),
+});
+
+export async function updatePosition(prevState: any, formData: FormData) {
+    const validatedFields = updatePositionSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { success: false, error: 'Datos no válidos.' };
+    }
+    const { positionId, ...dataToUpdate } = validatedFields.data;
+    try {
+        await dbUpdatePosition(positionId, dataToUpdate);
+        revalidatePath(`/admin/${dataToUpdate.assemblyId}`);
+        return { success: true, message: 'Posición actualizada correctamente.' };
+    } catch(e) {
+        return { success: false, error: 'No se pudo actualizar la posición.' };
+    }
+}
+
+const deletePositionSchema = z.object({
+    positionId: z.string().min(1, 'ID de posición no válido'),
+    assemblyId: z.string().min(1, 'El ID de asamblea es obligatorio'),
+});
+
+export async function deletePosition(prevState: any, formData: FormData) {
+    const validatedFields = deletePositionSchema.safeParse(Object.fromEntries(formData.entries()));
+    if (!validatedFields.success) {
+        return { success: false, error: 'Datos no válidos.' };
+    }
+
+    try {
+        await dbDeletePosition(validatedFields.data.positionId);
+        revalidatePath(`/admin/${validatedFields.data.assemblyId}`);
+        return { success: true, message: 'Posición eliminada correctamente.' };
+    } catch(e) {
+        return { success: false, error: 'No se pudo eliminar la posición.' };
+    }
+}
+
 
 const assemblySchema = z.object({
     title: z.string().min(3, 'El título es obligatorio'),
@@ -216,6 +271,7 @@ export async function updateAssembly(prevState: any, formData: FormData) {
     try {
         await dbUpdateAssembly(assemblyId, dataToUpdate);
         revalidatePath('/admin');
+        revalidatePath(`/admin/${assemblyId}`);
         revalidatePath('/dashboard');
         return { success: true, message: "Asamblea actualizada correctamente." };
     } catch (e) {
@@ -228,6 +284,7 @@ export async function associateVolunteerToAssembly(assemblyId: string, volunteer
     try {
         await dbAssociateVolunteer(assemblyId, volunteerId);
         revalidatePath('/admin');
+        revalidatePath(`/admin/${assemblyId}`);
         revalidatePath('/dashboard');
         return { success: true };
     } catch (e) {
@@ -272,7 +329,7 @@ export async function addShift(prevState: any, formData: FormData) {
 
     try {
         await dbAddShift({ positionId, volunteerId, startTime: startDateTime, endTime: endDateTime, assemblyId });
-        revalidatePath('/admin');
+        revalidatePath(`/admin/${assemblyId}`);
         revalidatePath('/dashboard');
         return { success: true, message: 'Turno creado correctamente.' };
     } catch (e) {
@@ -280,10 +337,10 @@ export async function addShift(prevState: any, formData: FormData) {
     }
 }
 
-export async function assignVolunteerToShift(shiftId: string, volunteerId: string | null) {
+export async function assignVolunteerToShift(shiftId: string, volunteerId: string | null, assemblyId: string) {
     try {
         await dbUpdateShift(shiftId, volunteerId);
-        revalidatePath('/admin');
+        revalidatePath(`/admin/${assemblyId}`);
         revalidatePath('/dashboard');
         return { success: true };
     } catch (e) {
@@ -295,6 +352,7 @@ const rejectShiftSchema = z.object({
     shiftId: z.string().min(1),
     reason: z.string().optional(),
     volunteerId: z.string().min(1),
+    assemblyId: z.string().min(1),
 });
 
 export async function rejectShift(prevState: any, formData: FormData) {
@@ -304,10 +362,12 @@ export async function rejectShift(prevState: any, formData: FormData) {
         return { success: false, error: 'Datos no válidos.' };
     }
     
+    const { shiftId, volunteerId, reason, assemblyId } = validatedFields.data;
+
     try {
-        await dbRejectShift(validatedFields.data.shiftId, validatedFields.data.volunteerId, validatedFields.data.reason || null);
+        await dbRejectShift(shiftId, volunteerId, reason || null);
         revalidatePath('/dashboard');
-        revalidatePath('/admin');
+        revalidatePath(`/admin/${assemblyId}`);
         return { success: true, message: 'Turno rechazado.' };
     } catch(e) {
         const message = e instanceof Error ? e.message : 'No se pudo rechazar el turno.';
@@ -331,9 +391,12 @@ export async function sendMessage(prevState: any, formData: FormData) {
     try {
         await addMessageToConversation(validatedFields.data.conversationId, validatedFields.data.senderId, validatedFields.data.message);
         revalidatePath(`/dashboard/chat/${validatedFields.data.conversationId}`);
+        revalidatePath(`/dashboard/chat`);
         return { success: true };
     } catch(e) {
         const message = e instanceof Error ? e.message : "No se pudo enviar el mensaje.";
         return { success: false, error: message };
     }
 }
+
+    
