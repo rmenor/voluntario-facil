@@ -50,7 +50,7 @@
   {
     "id": "s7",
     "positionId": "p7",
-    "volunteerId": null,
+    "volunteerId": "2",
     "startTime": "2024-08-15T13:00:00.000Z",
     "endTime": "2024-08-15T17:00:00.000Z",
     "assemblyId": "a2"

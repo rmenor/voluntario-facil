@@ -92,13 +92,13 @@ const getInitials = (name: string) => {
   return name.substring(0, 2);
 };
 
-export default function VolunteersTab({ assembly, initialVolunteers, allUsers }: { assembly: PopulatedAssembly, initialVolunteers: User[], allUsers: User[] }) {
+export default function VolunteersTab({ assembly, volunteers, allUsers }: { assembly: PopulatedAssembly, volunteers: User[], allUsers: User[] }) {
   const [isAddOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
   
   const renderMobileView = () => (
     <div className="space-y-4">
-      {initialVolunteers.map(user => (
+      {(volunteers || []).map(user => (
         <Card key={user.id}>
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -136,7 +136,7 @@ export default function VolunteersTab({ assembly, initialVolunteers, allUsers }:
         </TableRow>
       </TableHeader>
       <TableBody>
-        {initialVolunteers.map(user => (
+        {(volunteers || []).map(user => (
           <TableRow key={user.id}>
             <TableCell className="font-medium">
               <div className="flex items-center gap-3">
@@ -183,5 +183,3 @@ export default function VolunteersTab({ assembly, initialVolunteers, allUsers }:
     </Card>
   );
 }
-
-    

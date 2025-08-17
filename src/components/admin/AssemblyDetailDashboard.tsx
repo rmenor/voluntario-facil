@@ -74,10 +74,10 @@ export default function AssemblyDetailDashboard({ assembly, initialShifts, initi
                 <ShiftsTab initialShifts={initialShifts} positions={allPositions} volunteers={initialVolunteers} assembly={assembly}/>
             </TabsContent>
             <TabsContent value="volunteers" className="mt-6">
-                <VolunteersTab assembly={assembly} initialVolunteers={initialVolunteers} allUsers={allUsers} />
+                <VolunteersTab assembly={assembly} allUsers={allUsers} volunteers={initialVolunteers} />
             </TabsContent>
             <TabsContent value="positions" className="mt-6">
-                <PositionsTab initialPositions={allPositions} />
+                <PositionsTab initialPositions={allPositions} assembly={assembly} />
             </TabsContent>
           </Tabs>
         </div>

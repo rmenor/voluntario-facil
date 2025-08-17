@@ -54,5 +54,12 @@
     "description": "Control de estacionamiento - Registro",
     "iconName": "ClipboardCheck",
     "assemblyId": "a2"
+  },
+  {
+    "id": "fcoq3oyaa",
+    "name": "Posición 1",
+    "description": "Sector 1",
+    "iconName": "ParkingCircle",
+    "assemblyId": "ga0g3sz6p"
   }
 ]
