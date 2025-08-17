@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getUserByEmail, addUser as dbAddVolunteer, updateUser as dbUpdateVolunteer, addPosition as dbAddPosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift, getUser } from '@/lib/data';
+import { getUserByEmail, addUser as dbAddVolunteer, updateUser as dbUpdateVolunteer, addPosition as dbAddPosition, addShift as dbAddShift, updateShift as dbUpdateShift, addAssembly as dbAddAssembly, associateVolunteerToAssembly as dbAssociateVolunteer, updateAssembly as dbUpdateAssembly, rejectShift as dbRejectShift, getUser, addMessageToConversation } from '@/lib/data';
 import { revalidatePath } from 'next/cache';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -311,6 +311,29 @@ export async function rejectShift(prevState: any, formData: FormData) {
         return { success: true, message: 'Turno rechazado.' };
     } catch(e) {
         const message = e instanceof Error ? e.message : 'No se pudo rechazar el turno.';
+        return { success: false, error: message };
+    }
+}
+
+const sendMessageSchema = z.object({
+    conversationId: z.string().min(1),
+    senderId: z.string().min(1),
+    message: z.string().min(1, "El mensaje no puede estar vacío."),
+});
+
+export async function sendMessage(prevState: any, formData: FormData) {
+    const validatedFields = sendMessageSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { success: false, error: "Datos no válidos." };
+    }
+
+    try {
+        await addMessageToConversation(validatedFields.data.conversationId, validatedFields.data.senderId, validatedFields.data.message);
+        revalidatePath(`/dashboard/chat/${validatedFields.data.conversationId}`);
+        return { success: true };
+    } catch(e) {
+        const message = e instanceof Error ? e.message : "No se pudo enviar el mensaje.";
         return { success: false, error: message };
     }
 }

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Handshake, LogOut, UserCircle, Edit } from 'lucide-react';
+import { Handshake, LogOut, UserCircle, Edit, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useActionState, useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
@@ -97,7 +97,13 @@ export default function AppHeader() {
                 </span>
             </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end">
+        <div className="flex flex-1 items-center justify-end gap-2">
+             <Button variant="ghost" size="icon" asChild>
+                <Link href="/dashboard/chat">
+                    <MessageSquare className="h-5 w-5" />
+                    <span className="sr-only">Chat</span>
+                </Link>
+            </Button>
             <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
