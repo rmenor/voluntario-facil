@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { initialUsers, initialPositions, initialAssemblies, initialShifts } from '@/lib/mock-data';
+import { initialUsers, initialPositions, initialAssemblies, initialShifts, initialConversations, initialMessages } from '@/lib/mock-data';
 
 const db = new Database('data.db');
 
@@ -40,6 +40,22 @@ CREATE TABLE IF NOT EXISTS shifts (
   rejectionReason TEXT,
   rejectedBy TEXT
 );
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  name TEXT
+);
+CREATE TABLE IF NOT EXISTS conversation_participants (
+  conversationId TEXT,
+  userId TEXT,
+  PRIMARY KEY (conversationId, userId)
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  conversationId TEXT,
+  senderId TEXT,
+  text TEXT,
+  timestamp TEXT
+);
 `);
 
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count as number;
@@ -59,6 +75,16 @@ if (userCount === 0) {
 
   const insertShift = db.prepare('INSERT INTO shifts (id, positionId, volunteerId, startTime, endTime, assemblyId) VALUES (@id, @positionId, @volunteerId, @startTime, @endTime, @assemblyId)');
   initialShifts.forEach(s => insertShift.run({ ...s, startTime: s.startTime.toISOString(), endTime: s.endTime.toISOString() }));
+
+  const insertConversation = db.prepare('INSERT INTO conversations (id, name) VALUES (@id, @name)');
+  const insertParticipant = db.prepare('INSERT INTO conversation_participants (conversationId, userId) VALUES (@conversationId, @userId)');
+  initialConversations.forEach(c => {
+    insertConversation.run({ id: c.id, name: c.name });
+    c.participantIds.forEach(pid => insertParticipant.run({ conversationId: c.id, userId: pid }));
+  });
+
+  const insertMessage = db.prepare('INSERT INTO messages (id, conversationId, senderId, text, timestamp) VALUES (@id, @conversationId, @senderId, @text, @timestamp)');
+  initialMessages.forEach(m => insertMessage.run({ ...m, timestamp: m.timestamp.toISOString() }));
 }
 
 export default db;

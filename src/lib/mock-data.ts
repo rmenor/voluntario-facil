@@ -1,4 +1,4 @@
-import type { Position, PopulatedShift, User, PopulatedAssembly, Shift, Assembly } from '@/lib/types';
+import type { Position, PopulatedShift, User, PopulatedAssembly, Shift, Assembly, Conversation, Message } from '@/lib/types';
 
 export const initialUsers: User[] = [
   { id: '1', name: 'Admin User', phone: '123-456-7890', email: 'admin@example.com', role: 'admin', passwordHash: 'adminpassword' },
@@ -137,4 +137,29 @@ export const initialShifts: PopulatedShift[] = [
       assemblyId: 'a1',
       assembly: findAssembly('a1'),
     },
+];
+
+export const initialConversations: Conversation[] = [
+  {
+    id: 'c1',
+    name: null,
+    participantIds: ['1', '2'],
+  },
+];
+
+export const initialMessages: Message[] = [
+  {
+    id: 'm1',
+    conversationId: 'c1',
+    senderId: '1',
+    text: 'Hola Andrés, ¿cómo estás?',
+    timestamp: new Date('2024-07-01T10:00:00'),
+  },
+  {
+    id: 'm2',
+    conversationId: 'c1',
+    senderId: '2',
+    text: 'Todo bien, ¡gracias!',
+    timestamp: new Date('2024-07-01T10:05:00'),
+  },
 ];

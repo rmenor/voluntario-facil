@@ -1,6 +1,6 @@
 'use server';
 
-import type { Position, PopulatedShift, Shift, User, Assembly, PopulatedAssembly } from '@/lib/types';
+import type { Position, PopulatedShift, Shift, User, Assembly, PopulatedAssembly, Conversation, PopulatedConversation, Message } from '@/lib/types';
 import db from '@/lib/db';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -131,4 +131,90 @@ export const updateShift = async (shiftId: string, volunteerId: string | null) =
 export const rejectShift = async (shiftId: string, volunteerId: string, reason: string | null) => {
   if (!volunteerId) throw new Error('Cannot reject a shift without a volunteer.');
   db.prepare('UPDATE shifts SET volunteerId = NULL, rejectionReason = ?, rejectedBy = ? WHERE id = ?').run(reason || 'Sin motivo', volunteerId, shiftId);
+};
+
+// Conversations
+export const getConversationsForUser = async (userId: string): Promise<Conversation[]> => {
+  const rows = db.prepare(
+    `SELECT c.id, c.name FROM conversations c JOIN conversation_participants cp ON cp.conversationId = c.id WHERE cp.userId = ?`
+  ).all(userId) as { id: string; name: string | null }[];
+
+  return rows.map(r => {
+    const participantIds = db
+      .prepare('SELECT userId FROM conversation_participants WHERE conversationId = ?')
+      .all(r.id) as { userId: string }[];
+    const lastRow = db
+      .prepare('SELECT id, senderId, text, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp DESC LIMIT 1')
+      .get(r.id) as any;
+    const lastMessage = lastRow
+      ? {
+          id: lastRow.id,
+          conversationId: r.id,
+          senderId: lastRow.senderId,
+          text: lastRow.text,
+          timestamp: new Date(lastRow.timestamp),
+        }
+      : undefined;
+    return {
+      id: r.id,
+      name: r.name,
+      participantIds: participantIds.map(p => p.userId),
+      lastMessage,
+    } as Conversation;
+  });
+};
+
+export const getPopulatedConversation = async (
+  conversationId: string,
+  userId: string
+): Promise<PopulatedConversation | null> => {
+  const conv = db
+    .prepare('SELECT id, name FROM conversations WHERE id = ?')
+    .get(conversationId) as { id: string; name: string | null } | undefined;
+  if (!conv) return null;
+
+  const participants = db
+    .prepare('SELECT u.* FROM users u JOIN conversation_participants cp ON u.id = cp.userId WHERE cp.conversationId = ?')
+    .all(conversationId) as User[];
+  const participantIds = participants.map(p => p.id);
+  if (!participantIds.includes(userId)) return null;
+
+  const messageRows = db
+    .prepare('SELECT id, conversationId, senderId, text, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp ASC')
+    .all(conversationId) as any[];
+  const messages: Message[] = messageRows.map(m => ({
+    id: m.id,
+    conversationId: m.conversationId,
+    senderId: m.senderId,
+    text: m.text,
+    timestamp: new Date(m.timestamp),
+  }));
+  const lastMessage = messages[messages.length - 1];
+
+  return {
+    id: conv.id,
+    name: conv.name,
+    participantIds,
+    participants,
+    messages,
+    lastMessage,
+  };
+};
+
+export const addMessageToConversation = async (
+  conversationId: string,
+  senderId: string,
+  text: string
+) => {
+  const newMessage: Message = {
+    id: generateId(),
+    conversationId,
+    senderId,
+    text,
+    timestamp: new Date(),
+  };
+  db.prepare(
+    'INSERT INTO messages (id, conversationId, senderId, text, timestamp) VALUES (@id, @conversationId, @senderId, @text, @timestamp)'
+  ).run({ ...newMessage, timestamp: newMessage.timestamp.toISOString() });
+  return newMessage;
 };
