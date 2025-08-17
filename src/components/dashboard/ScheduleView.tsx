@@ -9,7 +9,7 @@ import type { PopulatedShift, PopulatedAssembly, User } from '@/lib/types';
 import AppHeader from '@/components/layout/AppHeader';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CalendarDays, Loader2, XCircle, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { CalendarDays, Loader2, XCircle, CheckCircle, AlertTriangle, HelpCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -85,9 +85,19 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
     );
   }
 
-  const getStatusBadge = (shift: PopulatedShift) => {
+  const getStatusContent = (shift: PopulatedShift) => {
     if (shift.rejectionReason) {
-        return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />Rechazado</Badge>;
+        return (
+            <div className="flex flex-col gap-1">
+                <Badge variant="destructive" className="w-fit"><XCircle className="mr-1 h-3 w-3" />Rechazado</Badge>
+                {shift.rejectionReason !== 'Sin motivo' && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Info className="h-3 w-3" />
+                    <span className="italic">"{shift.rejectionReason}"</span>
+                  </div>
+                )}
+            </div>
+        )
     }
     if (shift.volunteerId) {
         return <Badge variant="default"><CheckCircle className="mr-1 h-3 w-3" />Confirmado</Badge>;
@@ -140,7 +150,7 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>{format(new Date(shift.startTime), 'HH:mm')} - {format(new Date(shift.endTime), 'HH:mm')}</TableCell>
-                                                <TableCell>{getStatusBadge(shift)}</TableCell>
+                                                <TableCell>{getStatusContent(shift)}</TableCell>
                                                 <TableCell className="text-right">
                                                     {!shift.rejectionReason && shift.volunteerId === user.id && (
                                                         <Button variant="outline" size="sm" onClick={() => setRejectingShift(shift)}>

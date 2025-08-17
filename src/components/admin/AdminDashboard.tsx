@@ -59,7 +59,7 @@ export default function AdminDashboard({ initialUsers, initialPositions, initial
                 <ShiftsTab initialShifts={initialShifts} positions={initialPositions} volunteers={initialUsers} assemblies={initialAssemblies} />
             </TabsContent>
             <TabsContent value="volunteers" className="mt-6">
-                <VolunteersTab initialUsers={initialUsers.filter(u => u.id !== user.id)} />
+                <VolunteersTab initialUsers={initialUsers} />
             </TabsContent>
             <TabsContent value="positions" className="mt-6">
                 <PositionsTab initialPositions={initialPositions} />

@@ -82,6 +82,10 @@ export default function AppHeader() {
     return name.substring(0, 2);
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 max-w-screen-2xl items-center">
@@ -94,7 +98,6 @@ export default function AppHeader() {
             </Link>
         </div>
         <div className="flex flex-1 items-center justify-end">
-            {user && (
             <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -106,25 +109,21 @@ export default function AppHeader() {
                   </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DialogTrigger asChild>
-                      <DropdownMenuLabel className="font-normal cursor-pointer">
-                          <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{user.name}</p>
-                          <p className="text-xs leading-none text-muted-foreground">
-                              {user.email}
-                          </p>
-                          </div>
-                      </DropdownMenuLabel>
-                    </DialogTrigger>
+                    <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                            {user.email}
+                        </p>
+                        </div>
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {user.role === 'volunteer' && (
-                       <DialogTrigger asChild>
-                        <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Editar Perfil</span>
-                        </DropdownMenuItem>
-                      </DialogTrigger>
-                    )}
+                    <DialogTrigger asChild>
+                      <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" />
+                          <span>Editar Perfil</span>
+                      </DropdownMenuItem>
+                    </DialogTrigger>
                     <DropdownMenuItem onClick={logout}>
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Cerrar sesión</span>
@@ -138,7 +137,6 @@ export default function AppHeader() {
                   <EditProfileForm user={user} closeDialog={() => setEditDialogOpen(false)} />
               </DialogContent>
              </Dialog>
-            )}
         </div>
       </div>
     </header>

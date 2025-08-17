@@ -5,6 +5,7 @@ export const initialUsers: User[] = [
   { id: '2', name: 'Andrés García', phone: '234-567-8901', email: 'andres@example.com', role: 'volunteer', passwordHash: 'password' },
   { id: '3', name: 'Carlos Rodriguez', phone: '345-678-9012', email: 'carlos@example.com', role: 'volunteer', passwordHash: 'password' },
   { id: '4', name: 'Benito López', phone: '456-789-0123', email: 'benito@example.com', role: 'volunteer', passwordHash: 'password' },
+  { id: '5', name: 'Admin Secundario', phone: '555-555-5555', email: 'admin2@example.com', role: 'admin', passwordHash: 'adminpassword' },
 ];
 
 export const initialPositions: Position[] = [
@@ -135,7 +136,5 @@ export const initialShifts: PopulatedShift[] = [
       endTime: new Date('2024-10-26T18:00:00'),
       assemblyId: 'a1',
       assembly: findAssembly('a1'),
-      rejectionReason: 'Tengo otro compromiso',
-      rejectedBy: '3', // Carlos Rodriguez
     },
 ];

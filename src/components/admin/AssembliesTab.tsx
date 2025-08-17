@@ -97,7 +97,7 @@ function EditAssemblyForm({ assembly, volunteers, closeDialog }: { assembly: Pop
               <Label>Voluntarios</Label>
               <ScrollArea className="h-40 rounded-md border p-4">
                 <div className="space-y-2">
-                  {volunteers.filter(v => v.role === 'volunteer').map(volunteer => (
+                  {volunteers.map(volunteer => (
                     <div key={volunteer.id} className="flex items-center space-x-2">
                        <Checkbox 
                         id={`volunteer-${volunteer.id}`} 

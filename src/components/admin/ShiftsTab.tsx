@@ -63,7 +63,7 @@ function RejectionNote({ shift }: { shift: PopulatedShift }) {
             </TooltipTrigger>
             <TooltipContent>
                 <p className="font-semibold">Rechazado por: {rejectedBy.name}</p>
-                {shift.rejectionReason !== 'Sin motivo' && <p>Motivo: {shift.rejectionReason}</p>}
+                 {shift.rejectionReason !== 'Sin motivo' && <p>Motivo: {shift.rejectionReason}</p>}
             </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -191,6 +191,7 @@ export default function ShiftsTab({ initialShifts, positions, volunteers, assemb
                     <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                     <div>
                       <RejectionNote shift={shift} />
+                      {shift.rejectionReason !== 'Sin motivo' && <p className="mt-1 italic">"{shift.rejectionReason}"</p>}
                     </div>
                   </div>
                 )}
