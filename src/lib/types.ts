@@ -22,6 +22,7 @@ export interface Assembly {
   startDate: Date;
   endDate: Date;
   volunteerIds: string[];
+  type: 'regional' | 'circuito';
 }
 
 export interface PopulatedAssembly extends Assembly {

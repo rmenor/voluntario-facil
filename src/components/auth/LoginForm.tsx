@@ -37,7 +37,7 @@ export default function LoginForm() {
     if (role === 'admin') {
       user = { id: '1', name: 'Admin User', email: 'admin@example.com', phone: '123-456-7890', role: 'admin', passwordHash: 'adminpassword' };
     } else {
-      user = { id: '2', name: 'Ana García', email: 'ana@example.com', phone: '234-567-8901', role: 'volunteer', passwordHash: 'password' };
+      user = { id: '2', name: 'Andrés García', email: 'andres@example.com', phone: '234-567-8901', role: 'volunteer', passwordHash: 'password' };
     }
     authLogin(user);
   };

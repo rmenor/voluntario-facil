@@ -19,7 +19,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { rejectShift } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
-import ProfileCard from './ProfileCard';
 
 
 function RejectSubmitButton() {
@@ -106,8 +105,8 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
             <p className="text-muted-foreground capitalize">Bienvenido a tu panel de voluntario.</p>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-3">
-            <div className="md:col-span-2">
+            <div className="grid gap-8">
+            <div className="">
                 <Card>
                     <CardHeader>
                         <CardTitle>Mis Próximos Turnos</CardTitle>
@@ -132,9 +131,9 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                                             const Icon = LucideIcons[shift.position.iconName as keyof typeof LucideIcons] as React.ElementType;
                                             return (
                                             <TableRow key={shift.id} className={shift.rejectionReason ? 'bg-destructive/10' : ''}>
-                                                <TableCell>{shift.assembly.title}</TableCell>
+                                                <TableCell className="font-medium">{shift.assembly.title}</TableCell>
                                                 <TableCell>{format(new Date(shift.startTime), 'eeee, dd/MM', {locale: es})}</TableCell>
-                                                <TableCell className="font-medium">
+                                                <TableCell>
                                                     <div className="flex items-center gap-3">
                                                         {Icon && <Icon className="h-5 w-5 text-primary" />}
                                                         {shift.position.name}
@@ -163,9 +162,6 @@ export default function ScheduleView({ shifts: initialShifts }: { shifts: Popula
                         )}
                     </CardContent>
                 </Card>
-            </div>
-            <div className="md:col-span-1">
-                <ProfileCard user={user} />
             </div>
             </div>
         </div>

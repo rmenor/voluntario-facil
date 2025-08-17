@@ -14,11 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Handshake, MapPin, ClipboardList, Megaphone, Users, HeartHandshake, Utensils, Ticket } from 'lucide-react';
+import { PlusCircle, ParkingCircle, TrafficCone, UserCheck, RadioTower, ClipboardCheck, Car, Key, Shield } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const icons = { Handshake, MapPin, ClipboardList, Megaphone, Users, HeartHandshake, Utensils, Ticket };
+const icons = { ParkingCircle, TrafficCone, UserCheck, RadioTower, ClipboardCheck, Car, Key, Shield };
 
 function SubmitButton() {
   const { pending } = useFormStatus();

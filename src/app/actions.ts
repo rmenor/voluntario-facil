@@ -155,6 +155,7 @@ const assemblySchema = z.object({
     title: z.string().min(3, 'El título es obligatorio'),
     startDate: z.string().min(1, "La fecha de inicio es obligatoria"),
     endDate: z.string().min(1, "La fecha de fin es obligatoria"),
+    type: z.enum(['regional', 'circuito']),
 })
 
 export async function addAssembly(prevState: any, formData: FormData) {
@@ -164,7 +165,7 @@ export async function addAssembly(prevState: any, formData: FormData) {
         return { success: false, error: "Datos no válidos." };
     }
     
-    const { title, startDate, endDate } = validatedFields.data;
+    const { title, startDate, endDate, type } = validatedFields.data;
     const start = new Date(startDate);
     const end = new Date(endDate);
     
@@ -173,7 +174,7 @@ export async function addAssembly(prevState: any, formData: FormData) {
     }
 
     try {
-        await dbAddAssembly({ title, startDate: start, endDate: end });
+        await dbAddAssembly({ title, startDate: start, endDate: end, type });
         revalidatePath('/admin');
         return { success: true, message: "Asamblea creada correctamente." };
     } catch (e) {
@@ -198,13 +199,14 @@ export async function updateAssembly(prevState: any, formData: FormData) {
         return { success: false, error: "Datos no válidos." };
     }
 
-    const { assemblyId, title, startDate, endDate, volunteerIds } = validatedFields.data;
+    const { assemblyId, title, startDate, endDate, volunteerIds, type } = validatedFields.data;
     
     const dataToUpdate: any = {
         title,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        volunteerIds: volunteerIds || []
+        volunteerIds: volunteerIds || [],
+        type,
     }
 
     if (dataToUpdate.endDate < dataToUpdate.startDate) {

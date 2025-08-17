@@ -11,11 +11,68 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Handshake, LogOut, UserCircle } from 'lucide-react';
+import { Handshake, LogOut, UserCircle, Edit } from 'lucide-react';
 import Link from 'next/link';
+import { useActionState, useEffect, useState } from 'react';
+import type { User } from '@/lib/types';
+import { useFormStatus } from 'react-dom';
+import { updateProfile } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? 'Guardando...' : 'Guardar Cambios'}
+    </Button>
+  );
+}
+
+function EditProfileForm({ user, closeDialog }: { user: User, closeDialog: () => void }) {
+    const [state, formAction] = useActionState(updateProfile, { success: false, error: null, message: null, user: null });
+    const { toast } = useToast();
+    const { login: authLogin } = useAuth();
+    
+    useEffect(() => {
+        if (state.success && state.user) {
+            toast({ title: 'Éxito', description: state.message });
+            authLogin(state.user, true);
+            closeDialog();
+        } else if (state.error) {
+            toast({ variant: 'destructive', title: 'Error', description: state.error });
+        }
+    }, [state, toast, closeDialog, authLogin]);
+
+    return (
+        <form action={formAction} className="space-y-4">
+            <input type="hidden" name="userId" value={user.id} />
+            <div className="space-y-2">
+                <Label htmlFor="name">Nombre completo</Label>
+                <Input id="name" name="name" required defaultValue={user.name}/>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" required defaultValue={user.email} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input id="phone" name="phone" required defaultValue={user.phone} />
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button variant="ghost">Cancelar</Button></DialogClose>
+                <SubmitButton />
+            </DialogFooter>
+        </form>
+    )
+}
 
 export default function AppHeader() {
   const { user, logout } = useAuth();
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
@@ -38,31 +95,49 @@ export default function AppHeader() {
         </div>
         <div className="flex flex-1 items-center justify-end">
             {user && (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} alt={user.name} />
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                    </Avatar>
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                    </p>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar sesión</span>
-                </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} alt={user.name} />
+                      <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                      </Avatar>
+                  </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DialogTrigger asChild>
+                      <DropdownMenuLabel className="font-normal cursor-pointer">
+                          <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">{user.name}</p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                              {user.email}
+                          </p>
+                          </div>
+                      </DropdownMenuLabel>
+                    </DialogTrigger>
+                    <DropdownMenuSeparator />
+                    {user.role === 'volunteer' && (
+                       <DialogTrigger asChild>
+                        <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Editar Perfil</span>
+                        </DropdownMenuItem>
+                      </DialogTrigger>
+                    )}
+                    <DropdownMenuItem onClick={logout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Cerrar sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Editar mi perfil</DialogTitle>
+                  </DialogHeader>
+                  <EditProfileForm user={user} closeDialog={() => setEditDialogOpen(false)} />
+              </DialogContent>
+             </Dialog>
             )}
         </div>
       </div>

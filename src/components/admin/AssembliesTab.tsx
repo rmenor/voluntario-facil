@@ -14,12 +14,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Users, Calendar, Pencil } from 'lucide-react';
+import { PlusCircle, Users, Calendar, Pencil, Globe, Map } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 function CreateSubmitButton() {
   const { pending } = useFormStatus();
@@ -67,6 +68,19 @@ function EditAssemblyForm({ assembly, volunteers, closeDialog }: { assembly: Pop
             <div className="space-y-2">
                 <Label htmlFor="title">Título</Label>
                 <Input id="title" name="title" required defaultValue={assembly.title} />
+            </div>
+             <div className="space-y-2">
+              <Label>Tipo</Label>
+              <RadioGroup name="type" defaultValue={assembly.type} className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="regional" id="type-regional-edit" />
+                  <Label htmlFor="type-regional-edit" className="font-normal">Regional</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="circuito" id="type-circuito-edit" />
+                  <Label htmlFor="type-circuito-edit" className="font-normal">Circuito</Label>
+                </div>
+              </RadioGroup>
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -143,6 +157,19 @@ export default function AssembliesTab({ initialAssemblies, volunteers }: { initi
                         <Label htmlFor="title">Título</Label>
                         <Input id="title" name="title" required />
                     </div>
+                     <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <RadioGroup name="type" defaultValue="regional" className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="regional" id="type-regional" />
+                          <Label htmlFor="type-regional" className="font-normal">Regional</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="circuito" id="type-circuito" />
+                          <Label htmlFor="type-circuito" className="font-normal">Circuito</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="startDate">Fecha de Inicio</Label>
@@ -166,7 +193,13 @@ export default function AssembliesTab({ initialAssemblies, volunteers }: { initi
             {initialAssemblies.map(assembly => (
                 <Card key={assembly.id} className="flex flex-col">
                     <CardHeader>
-                        <CardTitle>{assembly.title}</CardTitle>
+                        <div className="flex justify-between items-start">
+                            <CardTitle>{assembly.title}</CardTitle>
+                             <Badge variant={assembly.type === 'regional' ? 'default' : 'secondary'} className="capitalize">
+                                {assembly.type === 'regional' ? <Globe className="mr-1 h-3 w-3" /> : <Map className="mr-1 h-3 w-3" />}
+                                {assembly.type}
+                            </Badge>
+                        </div>
                         <CardDescription>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 <Calendar className="h-4 w-4" />
