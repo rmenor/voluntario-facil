@@ -42,12 +42,12 @@
   {
     "id": "s6",
     "positionId": "p6",
-    "volunteerId": null,
+    "volunteerId": "4",
     "startTime": "2024-10-27T12:00:00.000Z",
     "endTime": "2024-10-27T16:00:00.000Z",
     "assemblyId": "a1",
-    "rejectionReason": "asdf",
-    "rejectedBy": "2"
+    "rejectionReason": null,
+    "rejectedBy": null
   },
   {
     "id": "s7",
@@ -60,9 +60,11 @@
   {
     "id": "s8",
     "positionId": "p8",
-    "volunteerId": null,
+    "volunteerId": "4",
     "startTime": "2024-10-26T14:00:00.000Z",
     "endTime": "2024-10-26T18:00:00.000Z",
-    "assemblyId": "a1"
+    "assemblyId": "a1",
+    "rejectionReason": null,
+    "rejectedBy": null
   }
 ]
